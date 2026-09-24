@@ -1,6 +1,7 @@
 """Skill Router for matching user intent to skills."""
 import os
 import json
+import re
 from typing import Dict, Any, Optional, Tuple, List
 from app.skills.registry import SkillRegistry
 from app.models.schemas import SkillDefinition
@@ -34,27 +35,52 @@ class SkillRouter:
         skills = self.registry.list_skills()
         scores: Dict[str, int] = {s.id: 0 for s in skills}
 
+        q_tokens = set(re.findall(r"\b[a-z]{3,}\b", q_lower))
+        STOP_WORDS = {
+            "this", "that", "what", "which", "with", "from", "your", "have", "been",
+            "will", "would", "could", "should", "does", "about", "line", "work",
+            "make", "user", "when", "asks", "for", "and", "the", "how", "into",
+            "some", "more", "such", "like", "give"
+        }
+
+        DISTINCTIVE_ANCHORS = {
+            "security_analysis": ["secur", "vulnerab", "secret", "credential", "auth", "inject"],
+            "code_explanation": ["explain", "line by line", "how does", "what does", "how it works", "walkthrough"],
+            "documentation": ["documentation", "readme", "api doc", "technical doc", "setup instruction"],
+            "task_planning": ["plan", "phase", "step", "how to build", "how to implement", "architect", "break down"],
+            "code_analysis": ["bug", "improv", "inefficien", "refactor", "code quality", "smell", "review"],
+        }
+
+        for skill_id, anchors in DISTINCTIVE_ANCHORS.items():
+            if skill_id in scores and any(anchor in q_lower for anchor in anchors):
+                scores[skill_id] += 15
+
         for skill in skills:
             # Check exact skill ID match
             if skill.id in q_lower:
-                scores[skill.id] = scores.get(skill.id, 0) + 10
+                scores[skill.id] = scores.get(skill.id, 0) + 12
+
+            # Boost on distinctive ID parts (e.g., 'security', 'documentation', 'planning')
+            for part in skill.id.split("_"):
+                if part in q_tokens and part not in STOP_WORDS and part not in {"code", "analysis"}:
+                    scores[skill.id] = scores.get(skill.id, 0) + 8
 
             # Check triggers
             for trigger in skill.when_to_use:
                 t_lower = trigger.lower()
                 if t_lower in q_lower:
-                    scores[skill.id] = scores.get(skill.id, 0) + 5
+                    scores[skill.id] = scores.get(skill.id, 0) + 8
                 else:
-                    # Partial word overlap
-                    words = [w for w in t_lower.split() if len(w) > 3]
-                    for w in words:
-                        if w in q_lower:
-                            scores[skill.id] = scores.get(skill.id, 0) + 1
+                    # Meaningful word tokens overlap
+                    t_tokens = [w for w in re.findall(r"\b[a-z]{3,}\b", t_lower) if w not in STOP_WORDS]
+                    for w in t_tokens:
+                        if w in q_tokens:
+                            scores[skill.id] = scores.get(skill.id, 0) + 3
 
             # Check description keywords
-            desc_words = [w for w in skill.description.lower().split() if len(w) > 4]
+            desc_words = [w for w in re.findall(r"\b[a-z]{4,}\b", skill.description.lower()) if w not in STOP_WORDS]
             for w in desc_words:
-                if w in q_lower:
+                if w in q_tokens:
                     scores[skill.id] = scores.get(skill.id, 0) + 1
 
         # Sort skills by match score
@@ -118,3 +144,33 @@ Do not invent skills.
             return data.get("primary_skill"), data.get("supporting_skills", [])
         except Exception:
             return self._route_heuristic(query, code)
+
+    def route_intent(self, query: str, code: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Phase 3 Structured Router: returns structured decision with confidence score.
+        Example: {"skill": "code_analysis", "confidence": 0.94}
+        """
+        primary_skill, supporting = self.route(query, code)
+        if not primary_skill:
+            return {
+                "skill": None,
+                "confidence": 0.0,
+                "supporting_skills": [],
+                "message": "I don't currently have a skill that matches this request."
+            }
+
+        # Calculate normalized confidence
+        q_lower = query.lower()
+        skill = self.registry.get_skill(primary_skill)
+        confidence = 0.85
+        if skill and any(t.lower() in q_lower for t in skill.when_to_use):
+            confidence = 0.95
+        elif primary_skill in q_lower:
+            confidence = 0.98
+
+        return {
+            "skill": primary_skill,
+            "confidence": round(confidence, 2),
+            "supporting_skills": supporting,
+        }
+

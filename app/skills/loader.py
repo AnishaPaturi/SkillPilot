@@ -21,3 +21,22 @@ class SkillLoader:
             content = f.read()
 
         return SkillsMarkdownParser.parse(content)
+
+
+def load_skills(file_path: str = "skills.md") -> list[dict]:
+    """Reads skills.md and returns a list of skill dictionaries matching Phase 2 spec."""
+    loader = SkillLoader(file_path)
+    skills = loader.load_skills()
+    return [
+        {
+            "id": s.id,
+            "name": s.name,
+            "description": s.description,
+            "when_to_use": s.when_to_use,
+            "input": s.input_spec,
+            "output": s.output_spec,
+            "constraints": s.constraints,
+        }
+        for s in skills
+    ]
+

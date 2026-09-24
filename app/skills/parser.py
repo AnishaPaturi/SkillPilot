@@ -65,14 +65,14 @@ class SkillsMarkdownParser:
                 ]
 
             # Extract Constraints
-            constraints_match = re.search(r"###\s+Constraints\s*\n(.*?)(?=\n###|\Z)", block, re.DOTALL)
+            constraints_match = re.search(r"###\s+Constraints\s*\n(.*?)(?=\n###|\n---|\Z)", block, re.DOTALL)
             constraints = []
             if constraints_match:
                 constraints_text = constraints_match.group(1).strip()
                 constraints = [
                     re.sub(r"^[-*]\s*", "", line).strip()
                     for line in constraints_text.splitlines()
-                    if line.strip().startswith(("-", "*"))
+                    if line.strip().startswith(("-", "*")) and not line.strip().startswith(("---", "***"))
                 ]
 
             skill = SkillDefinition(
