@@ -53,3 +53,20 @@ def test_agent_skill_chaining(agent):
     assert "Step 1: Security Analysis" in res.response
     assert "Step 2: Documentation" in res.response
 
+
+def test_agent_conversational_memory(agent):
+    session_id = "test_memory_thread_1"
+    code = "def calc(items=[]):\n    return sum(items)"
+
+    # Turn 1
+    t1 = agent.run("Analyze this code for bugs", code=code, session_id=session_id)
+    assert t1.selected_skill == "code_analysis"
+    assert len(t1.execution_history) == 1
+
+    # Turn 2: Follow-up without passing code explicitly
+    t2 = agent.run("Now document those issues", code=None, session_id=session_id)
+    assert t2.selected_skill == "documentation"
+    assert len(t2.execution_history) == 2
+    assert "requires source code" not in t2.response
+
+

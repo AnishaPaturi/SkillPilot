@@ -71,8 +71,11 @@ def chat(request: ChatRequest):
     if not request.query or not request.query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
 
-    try:
-        response = agent.run(query=request.query, code=request.code)
+        response = agent.run(
+            query=request.query,
+            code=request.code,
+            session_id=request.session_id,
+        )
         return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Agent execution error: {str(e)}")

@@ -1,9 +1,18 @@
-"""LangGraph State definition for SkillPilot Agent with Skill Chaining."""
+"""LangGraph State definition for SkillPilot Agent with Conversational Memory & Chaining."""
 from typing import TypedDict, Optional, List, Dict, Any
 
 
 class AgentState(TypedDict, total=False):
     """The shared state dictionary passing through LangGraph nodes."""
+    # Phase 7: Core Conversational State & Memory
+    messages: List[Dict[str, str]]
+    user_request: str
+    selected_skill: Optional[str]
+    skill_result: Optional[str]
+    execution_history: List[Dict[str, Any]]
+    session_id: str
+
+    # Pipeline & Processing Fields
     query: str
     code: Optional[str]
     selected_skill_id: Optional[str]

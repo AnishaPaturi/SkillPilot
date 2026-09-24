@@ -46,7 +46,7 @@ class SkillRouter:
         DISTINCTIVE_ANCHORS = {
             "security_analysis": ["secur", "vulnerab", "secret", "credential", "auth", "inject"],
             "code_explanation": ["explain", "line by line", "how does", "what does", "how it works", "walkthrough"],
-            "documentation": ["documentation", "readme", "api doc", "technical doc", "setup instruction"],
+            "documentation": ["document", "readme", "api doc", "technical doc", "setup instruction"],
             "task_planning": ["plan", "phase", "step", "how to build", "how to implement", "architect", "break down"],
             "code_analysis": ["bug", "improv", "inefficien", "refactor", "code quality", "smell", "review"],
         }

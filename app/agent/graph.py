@@ -1,10 +1,19 @@
-"""LangGraph Workflow Controller for SkillPilot with Multi-Step Skill Chaining.
+"""LangGraph Workflow Controller for SkillPilot with Conversational Memory & Multi-Step Skill Chaining.
 
-Architecture:
+Phase 7 State & Architecture:
+AgentState:
+    messages
+    user_request
+    selected_skill
+    skill_result
+    execution_history
+    session_id
+
+Workflow:
 START
   │
   ▼
-Analyze Request
+Analyze Request (Check Memory for Prior Code / Context)
   │
   ▼
 Select Skill / Plan Chain
@@ -26,13 +35,15 @@ Select Skill / Plan Chain
                     │ More in Chain?    │
                     ▼                   ▼
               Advance Chain        Response
-              (Context Handoff)         │
-                    │                  END
-                    └───────► (Next Skill Branch)
+              (Context Handoff)    (Update Memory & History)
+                    │                   │
+                    └───────► (Next)   END
 """
 import os
+import re
 from typing import Dict, Any, Optional, List
 from langgraph.graph import StateGraph, END
+from langgraph.checkpoint.memory import MemorySaver
 
 from app.agent.state import AgentState
 from app.agent.router import SkillRouter
@@ -50,15 +61,16 @@ from app.tools import (
 
 
 class SkillPilotAgent:
-    """Orchestrates the SkillPilot workflow using LangGraph state graph with skill chaining."""
+    """Orchestrates the SkillPilot workflow using LangGraph with Memory and Chaining."""
 
     def __init__(self, registry: Optional[SkillRegistry] = None):
         self.registry = registry or SkillRegistry()
         self.router = SkillRouter(self.registry)
+        self.checkpointer = MemorySaver()
         self.graph = self._build_workflow()
 
     def _build_workflow(self):
-        """Constructs the multi-branch and cyclic chaining LangGraph state machine."""
+        """Constructs the multi-branch, stateful LangGraph state machine with memory."""
         workflow = StateGraph(AgentState)
 
         # 1. Ingestion & Router Nodes
@@ -72,7 +84,7 @@ class SkillPilotAgent:
         workflow.add_node("exec_code_explanation", self._node_exec_code_explanation)
         workflow.add_node("exec_task_planning", self._node_exec_task_planning)
 
-        # 3. Validation & Chaining Nodes
+        # 3. Validation, Chaining & Memory Persistence Nodes
         workflow.add_node("validate", self._node_validate)
         workflow.add_node("advance_chain", self._node_advance_chain)
         workflow.add_node("format_response", self._node_format_response)
@@ -130,16 +142,19 @@ class SkillPilotAgent:
 
         workflow.add_edge("format_response", END)
 
-        return workflow.compile()
+        return workflow.compile(checkpointer=self.checkpointer)
 
     # --- Node Implementations ---
 
     def _node_analyze_request(self, state: AgentState) -> AgentState:
-        """Analyzes and normalizes user request and extracts embedded code if present."""
+        """
+        Analyzes request, extracts code, and leverages conversational memory
+        to resolve pronouns and references to prior turns (e.g. 'those issues', 'that code').
+        """
         query = state.get("query", "").strip()
         code = state.get("code")
 
-        # Extract code from markdown triple backticks if not provided separately
+        # Extract code from markdown triple backticks if provided in the prompt
         if not code and "```" in query:
             parts = query.split("```")
             if len(parts) >= 3:
@@ -148,9 +163,16 @@ class SkillPilotAgent:
                     extracted = extracted.split("\n", 1)[1]
                 code = extracted
 
+        # Conversational Memory Resolution:
+        prior_result = state.get("skill_result") or state.get("raw_response")
+        if code and prior_result and any(w in query.lower() for w in ["issue", "vulnerab", "result", "output", "finding", "those", "that", "them"]):
+            if "Prior Analysis Results from Memory" not in code:
+                code = f"{code}\n\n# Prior Analysis Results from Memory:\n{prior_result}"
+
         return {
             **state,
             "query": query,
+            "user_request": query,
             "code": code,
             "step_results": [],
             "current_step_index": 0,
@@ -168,6 +190,7 @@ class SkillPilotAgent:
             return {
                 **state,
                 "selected_skill_id": None,
+                "selected_skill": None,
                 "skill_chain": [],
                 "is_chained": False,
                 "final_response": "I don't currently have a skill that matches this request.",
@@ -191,6 +214,7 @@ class SkillPilotAgent:
         return {
             **state,
             "selected_skill_id": first_skill_id,
+            "selected_skill": first_skill_id,
             "skill_chain": skill_chain,
             "current_step_index": 0,
             "is_chained": len(skill_chain) > 1,
@@ -255,6 +279,7 @@ class SkillPilotAgent:
             **state,
             "current_step_index": curr_idx,
             "selected_skill_id": next_skill_id,
+            "selected_skill": next_skill_id,
             "skill_definition": next_skill_def.model_dump() if next_skill_def else None,
             "code": enriched_code,
             "missing_input_prompt": None,
@@ -286,7 +311,13 @@ class SkillPilotAgent:
             tool_findings=tool_findings,
         )
         updated_steps = self._record_step(state, output, tool_findings)
-        return {**state, "tool_findings": tool_findings, "raw_response": output, "step_results": updated_steps}
+        return {
+            **state,
+            "tool_findings": tool_findings,
+            "raw_response": output,
+            "skill_result": output,
+            "step_results": updated_steps,
+        }
 
     def _node_exec_security_analysis(self, state: AgentState) -> AgentState:
         payload = state.get("code") or state.get("query", "")
@@ -300,7 +331,13 @@ class SkillPilotAgent:
             tool_findings=tool_findings,
         )
         updated_steps = self._record_step(state, output, tool_findings)
-        return {**state, "tool_findings": tool_findings, "raw_response": output, "step_results": updated_steps}
+        return {
+            **state,
+            "tool_findings": tool_findings,
+            "raw_response": output,
+            "skill_result": output,
+            "step_results": updated_steps,
+        }
 
     def _node_exec_documentation(self, state: AgentState) -> AgentState:
         payload = state.get("code") or state.get("query", "")
@@ -314,7 +351,13 @@ class SkillPilotAgent:
             tool_findings=tool_findings,
         )
         updated_steps = self._record_step(state, output, tool_findings)
-        return {**state, "tool_findings": tool_findings, "raw_response": output, "step_results": updated_steps}
+        return {
+            **state,
+            "tool_findings": tool_findings,
+            "raw_response": output,
+            "skill_result": output,
+            "step_results": updated_steps,
+        }
 
     def _node_exec_code_explanation(self, state: AgentState) -> AgentState:
         code = state.get("code", "")
@@ -328,7 +371,13 @@ class SkillPilotAgent:
             tool_findings=tool_findings,
         )
         updated_steps = self._record_step(state, output, tool_findings)
-        return {**state, "tool_findings": tool_findings, "raw_response": output, "step_results": updated_steps}
+        return {
+            **state,
+            "tool_findings": tool_findings,
+            "raw_response": output,
+            "skill_result": output,
+            "step_results": updated_steps,
+        }
 
     def _node_exec_task_planning(self, state: AgentState) -> AgentState:
         query = state.get("query", "")
@@ -342,7 +391,13 @@ class SkillPilotAgent:
             tool_findings=tool_findings,
         )
         updated_steps = self._record_step(state, output, tool_findings)
-        return {**state, "tool_findings": tool_findings, "raw_response": output, "step_results": updated_steps}
+        return {
+            **state,
+            "tool_findings": tool_findings,
+            "raw_response": output,
+            "skill_result": output,
+            "step_results": updated_steps,
+        }
 
     # --- Validation & Response Nodes ---
 
@@ -363,52 +418,87 @@ class SkillPilotAgent:
         }
 
     def _node_format_response(self, state: AgentState) -> AgentState:
-        """Synthesizes single-skill response or orchestrated multi-step report."""
+        """Synthesizes response and commits conversational memory to execution history."""
         if state.get("missing_input_prompt"):
-            return {**state, "final_response": state["missing_input_prompt"]}
+            final_answer = state["missing_input_prompt"]
+        elif not state.get("selected_skill_id"):
+            final_answer = "I don't currently have a skill that matches this request."
+        else:
+            step_results = state.get("step_results", [])
+            if len(step_results) > 1:
+                # Multi-step Chained Synthesis
+                plan_str = " -> ".join(f"`{s}`" for s in state.get("skill_chain", []))
+                lines = [
+                    "# SkillPilot Multi-Step Execution Pipeline\n",
+                    f"> **Orchestration Chain:** {plan_str}",
+                    f"> **Total Steps Executed:** `{len(step_results)}`\n",
+                ]
+                for step in step_results:
+                    lines.append(f"## Step {step['step']}: {step['skill_name']} (`{step['skill']}`)")
+                    lines.append(step["output"])
+                    lines.append("\n---\n")
+                final_answer = "\n".join(lines)
+            else:
+                final_answer = state.get("raw_response") or "No response generated."
 
-        if not state.get("selected_skill_id"):
-            return {**state, "final_response": "I don't currently have a skill that matches this request."}
+        # Update Conversation Memory & Execution History
+        history = list(state.get("execution_history", []))
+        turn_num = len(history) + 1
+        history.append({
+            "turn": turn_num,
+            "user_request": state.get("query"),
+            "selected_skill": state.get("selected_skill_id"),
+            "skill_result": final_answer,
+            "is_valid": state.get("is_valid", True),
+        })
 
-        step_results = state.get("step_results", [])
-        if len(step_results) > 1:
-            # Multi-step Chained Synthesis
-            plan_str = " -> ".join(f"`{s}`" for s in state.get("skill_chain", []))
-            lines = [
-                "# SkillPilot Multi-Step Execution Pipeline\n",
-                f"> **Orchestration Chain:** {plan_str}",
-                f"> **Total Steps Executed:** `{len(step_results)}`\n",
-            ]
-            for step in step_results:
-                lines.append(f"## Step {step['step']}: {step['skill_name']} (`{step['skill']}`)")
-                lines.append(step["output"])
-                lines.append("\n---\n")
+        messages = list(state.get("messages", []))
+        messages.append({"role": "user", "content": state.get("query", "")})
+        messages.append({"role": "assistant", "content": final_answer})
 
-            return {**state, "final_response": "\n".join(lines)}
+        return {
+            **state,
+            "final_response": final_answer,
+            "skill_result": final_answer,
+            "execution_history": history,
+            "messages": messages,
+        }
 
-        final_answer = state.get("raw_response") or "No response generated."
-        return {**state, "final_response": final_answer}
+    def run(
+        self,
+        query: str,
+        code: Optional[str] = None,
+        session_id: str = "default",
+    ) -> ChatResponse:
+        """
+        Runs the compiled LangGraph workflow from START to END, persisting
+        conversational state via thread checkpointing.
+        """
+        config = {"configurable": {"thread_id": session_id}}
 
-    def run(self, query: str, code: Optional[str] = None) -> ChatResponse:
-        """Runs the compiled LangGraph workflow from START to END."""
-        initial_state: AgentState = {
+        initial_state: Dict[str, Any] = {
             "query": query,
-            "code": code,
+            "user_request": query,
+            "session_id": session_id,
             "retry_count": 0,
             "supporting_skills": [],
             "step_results": [],
             "current_step_index": 0,
             "skill_chain": [],
         }
+        if code is not None:
+            initial_state["code"] = code
 
-        final_state = self.graph.invoke(initial_state)
+        final_state = self.graph.invoke(initial_state, config=config)
 
         return ChatResponse(
             success=True,
+            session_id=session_id,
             selected_skill=final_state.get("selected_skill_id"),
             supporting_skills=final_state.get("supporting_skills", []),
             skill_chain=final_state.get("skill_chain", []),
             step_results=final_state.get("step_results", []),
+            execution_history=final_state.get("execution_history", []),
             response=final_state.get("final_response") or "No response generated.",
             is_valid=final_state.get("is_valid", True),
             validation_notes=final_state.get("validation_notes"),

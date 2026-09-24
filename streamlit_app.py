@@ -1,6 +1,7 @@
-"""Streamlit UI for SkillPilot."""
+"""Streamlit UI for SkillPilot with Conversational Memory & Multi-Step Chaining."""
 import streamlit as st
 import os
+import uuid
 from dotenv import load_dotenv
 
 from app.skills.loader import SkillLoader
@@ -20,8 +21,12 @@ if "registry" not in st.session_state:
     st.session_state.registry = SkillRegistry()
 if "agent" not in st.session_state:
     st.session_state.agent = SkillPilotAgent(registry=st.session_state.registry)
+if "session_id" not in st.session_state:
+    st.session_state.session_id = f"session_{uuid.uuid4().hex[:8]}"
+if "history" not in st.session_state:
+    st.session_state.history = []
 
-# Sidebar: Skill Catalog
+# Sidebar: Skill Catalog & Memory Management
 with st.sidebar:
     st.title("🧭 Skill Catalog")
     st.caption("Capabilities loaded dynamically from `skills.md`")
@@ -41,6 +46,15 @@ with st.sidebar:
                 st.caption(f"- {out}")
 
     st.divider()
+    st.markdown("### 🧠 Conversation Memory")
+    st.caption(f"Session Thread: `{st.session_state.session_id}`")
+    st.caption(f"Turns in Memory: `{len(st.session_state.history)}`")
+
+    if st.button("🗑️ Reset Conversation Memory", use_container_width=True):
+        st.session_state.session_id = f"session_{uuid.uuid4().hex[:8]}"
+        st.session_state.history = []
+        st.success("Started new conversation session!")
+
     if st.button("🔄 Reload skills.md", use_container_width=True):
         st.session_state.registry.reload()
         st.session_state.agent = SkillPilotAgent(registry=st.session_state.registry)
@@ -50,8 +64,8 @@ with st.sidebar:
 st.title("🧭 SkillPilot")
 st.subheader("Skill-Driven Autonomous Agent Runtime")
 st.markdown(
-    "SkillPilot extracts intent from your request, matches the relevant skill defined in "
-    "`skills.md`, loads its constraints, runs diagnostics, and validates the output."
+    "SkillPilot dynamically matches requests to skills in `skills.md`, chains sequential tasks, "
+    "and maintains conversation memory across multi-turn dialogs."
 )
 
 col1, col2 = st.columns([1, 1])
@@ -72,32 +86,29 @@ API_KEY = "sk_live_999888777666555444"
 def run_backup(user_path):
     os.system("tar -czf backup.tar.gz " + user_path)
 """
-    if sample_col2.button("Code Review"):
-        preset_query = "Review this code for bugs, quality issues and inefficiencies"
-        preset_code = """def calc_sum(numbers):
-    total = 0
-    for i in range(len(numbers)):
-        for j in range(len(numbers)):
-            if i == j:
-                total += numbers[i]
-    return total
+    if sample_col2.button("Chained Request"):
+        preset_query = "Analyze this Python API for security issues and then create documentation explaining the vulnerabilities."
+        preset_code = """import os
+ADMIN_KEY = "secret_token_12345"
+def query_db(uid):
+    return "SELECT * FROM users WHERE id=" + uid
 """
-    if sample_col3.button("Task Planning"):
-        preset_query = "How to build an asynchronous distributed worker queue in Python? Give me development steps and implementation phases."
+    if sample_col3.button("Follow-up Turn"):
+        preset_query = "Now document those issues."
         preset_code = ""
 
     user_query = st.text_area(
         "User Prompt / Goal",
         value=preset_query,
-        placeholder="e.g. Analyze this Python code and find security issues",
+        placeholder="e.g. Analyze this Python code or 'Now document those issues'",
         height=100,
     )
 
     user_code = st.text_area(
-        "Source Code / Configuration (Optional)",
+        "Source Code / Configuration (Optional - memory retains prior code)",
         value=preset_code,
-        placeholder="Paste code or config here...",
-        height=220,
+        placeholder="Paste code or config here (can leave blank for follow-up questions)...",
+        height=200,
     )
 
     submit = st.button("🚀 Execute Request", type="primary", use_container_width=True)
@@ -113,7 +124,9 @@ with col2:
                 response = st.session_state.agent.run(
                     query=user_query,
                     code=user_code if user_code.strip() else None,
+                    session_id=st.session_state.session_id,
                 )
+                st.session_state.history = response.execution_history
 
             # Metadata bar
             meta_col1, meta_col2, meta_col3 = st.columns(3)
@@ -124,11 +137,19 @@ with col2:
                 status_badge = "✅ Valid" if response.is_valid else "⚠️ Needs Review"
                 st.metric(label="Output Status", value=status_badge)
             with meta_col3:
-                supporting = ", ".join(response.supporting_skills) if response.supporting_skills else "None"
-                st.metric(label="Supporting Skills", value=supporting)
+                chain_info = " -> ".join(response.skill_chain) if len(response.skill_chain) > 1 else "Single Step"
+                st.metric(label="Execution Mode", value=chain_info)
 
             st.divider()
             st.markdown(response.response)
 
             if response.validation_notes:
                 st.info(f"**Validation Feedback:** {response.validation_notes}")
+
+    # Prior turns accordion
+    if st.session_state.history:
+        with st.expander(f"📜 View Conversation Memory ({len(st.session_state.history)} prior turns)"):
+            for item in st.session_state.history:
+                st.markdown(f"**Turn {item['turn']} Prompt:** `{item['user_request']}`")
+                st.caption(f"Skill Executed: `{item['selected_skill']}`")
+                st.divider()
