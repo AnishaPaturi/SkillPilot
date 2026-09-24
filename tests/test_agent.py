@@ -40,3 +40,16 @@ def test_agent_planning_execution(agent):
     res = agent.run("Provide an implementation plan and development steps to build an authentication service")
     assert res.selected_skill == "task_planning"
     assert res.is_valid is True
+
+
+def test_agent_skill_chaining(agent):
+    query = "Analyze this Python API for security issues and then create documentation explaining the vulnerabilities."
+    code = "import os\nAPI_KEY = 'secret_12345678'\nos.system('echo test')"
+    res = agent.run(query, code=code)
+    assert res.skill_chain == ["security_analysis", "documentation"]
+    assert len(res.step_results) == 2
+    assert res.step_results[0]["skill"] == "security_analysis"
+    assert res.step_results[1]["skill"] == "documentation"
+    assert "Step 1: Security Analysis" in res.response
+    assert "Step 2: Documentation" in res.response
+

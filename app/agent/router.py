@@ -174,3 +174,36 @@ Do not invent skills.
             "supporting_skills": supporting,
         }
 
+    def plan_chain(self, query: str, code: Optional[str] = None) -> List[str]:
+        """
+        Phase 6 Skill Chaining:
+        Detects if the request requires an ordered multi-step sequence of skills.
+        Example:
+            "Analyze this Python API for security issues and then create documentation explaining the vulnerabilities."
+            -> ["security_analysis", "documentation"]
+        """
+        q_lower = query.lower()
+
+        # Split on sequential conjunctions: 'and then', 'then', 'followed by', 'after that'
+        split_pattern = r"\b(?:and\s+then|followed\s+by|after\s+that|then)\b"
+        segments = re.split(split_pattern, q_lower)
+
+        chain: List[str] = []
+        if len(segments) > 1:
+            for seg in segments:
+                seg_clean = seg.strip()
+                if not seg_clean:
+                    continue
+                skill_id, _ = self.route(seg_clean, code)
+                if skill_id and (not chain or chain[-1] != skill_id):
+                    chain.append(skill_id)
+
+        # Fallback to single primary skill if no chain markers found
+        if not chain:
+            primary_skill, _ = self.route(query, code)
+            if primary_skill:
+                chain = [primary_skill]
+
+        return chain
+
+

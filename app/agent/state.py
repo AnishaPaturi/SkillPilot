@@ -1,6 +1,5 @@
-"""LangGraph State definition for SkillPilot Agent."""
+"""LangGraph State definition for SkillPilot Agent with Skill Chaining."""
 from typing import TypedDict, Optional, List, Dict, Any
-from app.models.schemas import SkillDefinition
 
 
 class AgentState(TypedDict, total=False):
@@ -18,3 +17,9 @@ class AgentState(TypedDict, total=False):
     missing_input_prompt: Optional[str]
     final_response: Optional[str]
     retry_count: int
+
+    # Multi-step Skill Chaining state
+    skill_chain: List[str]
+    current_step_index: int
+    step_results: List[Dict[str, Any]]
+    is_chained: bool
