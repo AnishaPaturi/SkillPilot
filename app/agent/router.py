@@ -32,7 +32,7 @@ class SkillRouter:
         """Deterministic heuristic router based on triggers and descriptions from skills.md."""
         q_lower = query.lower()
         skills = self.registry.list_skills()
-        scores: Dict[str, int] = {s.id: 0}
+        scores: Dict[str, int] = {s.id: 0 for s in skills}
 
         for skill in skills:
             # Check exact skill ID match
