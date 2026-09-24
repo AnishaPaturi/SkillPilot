@@ -111,7 +111,9 @@ class SkillPilotAgent:
                 if "\n" in code:
                     code = code.split("\n", 1)[1]
 
-        findings = SkillExecutor.run_tools_for_skill(skill_id, code) if skill_id else None
+        findings = SkillExecutor.run_tools_for_skill(
+            skill_id, query=state.get("query", ""), code=code
+        ) if skill_id else None
         return {**state, "tool_findings": findings, "code": code}
 
     def _node_execute(self, state: AgentState) -> AgentState:
