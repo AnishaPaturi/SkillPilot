@@ -39,3 +39,33 @@ def test_route_task_planning(router):
 def test_route_unmatched_query(router):
     skill_id, supporting = router.route("What is the recipe for chocolate chip cookies?")
     assert skill_id is None
+
+
+def test_plan_chain_security_and_documentation(router):
+    query = "Analyze this Python API for security issues and then create documentation explaining the vulnerabilities."
+    chain = router.plan_chain(query)
+    assert chain == ["security_analysis", "documentation"]
+
+
+def test_plan_chain_three_step_sequence(router):
+    query = "Review this code for bugs, then analyze security vulnerabilities, after that generate documentation"
+    chain = router.plan_chain(query)
+    assert chain == ["code_analysis", "security_analysis", "documentation"]
+
+
+def test_plan_chain_compound_and(router):
+    query = "Analyze this Python code for security issues and generate documentation"
+    chain = router.plan_chain(query)
+    assert chain == ["security_analysis", "documentation"]
+
+
+def test_plan_chain_single_step_fallback(router):
+    query = "Explain this code line by line and tell me how it works"
+    chain = router.plan_chain(query)
+    assert chain == ["code_explanation"]
+
+
+def test_plan_chain_unmatched(router):
+    query = "What is the recipe for chocolate chip cookies?"
+    chain = router.plan_chain(query)
+    assert chain == []

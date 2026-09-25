@@ -82,6 +82,21 @@ def chat(request: ChatRequest):
         raise HTTPException(status_code=500, detail=f"Agent execution error: {str(e)}")
 
 
+@app.post("/api/chain/plan")
+def plan_chain(request: ChatRequest):
+    """Detects and returns the ordered multi-step skill chain for a given request."""
+    if not request.query or not request.query.strip():
+        raise HTTPException(status_code=400, detail="Query cannot be empty.")
+
+    chain = agent.router.plan_chain(request.query, request.code)
+    return {
+        "query": request.query,
+        "skill_chain": chain,
+        "is_chained": len(chain) > 1,
+        "total_steps": len(chain),
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
     host = os.getenv("HOST", "0.0.0.0")

@@ -10,11 +10,13 @@
 - **Agent Controller**: Built with LangGraph for stateful multi-step cycles: routing, execution, validation, and correction loops.
 - **Dynamic Routing**: Uses LLM semantic intent matching against skill definitions to select the appropriate capability.
 - **Output Validation**: Enforces skill-specific output contracts via Pydantic models before returning results.
+- **Multi-Step Skill Chaining**: Orchestrates sequential multi-skill execution workflows (e.g., Security Analysis → Documentation).
 
 ---
 
 ## 🏗️ Architecture
 
+### Single-Skill Flow
 ```
 User Request
      ↓
@@ -31,6 +33,19 @@ Specialized Skill Execution (code_analysis, security_analysis, task_planning, et
 Output Validator
      ↓
 Validated Response
+```
+
+### Multi-Step Skill Chaining (Phase 6)
+```
+User Request
+     ↓
+Skill 1: Security Analysis
+     ↓
+Result / Context Handoff
+     ↓
+Skill 2: Documentation
+     ↓
+Final Result
 ```
 
 ---
@@ -59,5 +74,5 @@ uvicorn app.main:app --reload
 
 ### 4. Run Streamlit UI
 ```bash
-streamlit run app.py
+streamlit run streamlit_app.py
 ```

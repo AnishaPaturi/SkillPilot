@@ -141,6 +141,14 @@ with col2:
                 st.metric(label="Execution Mode", value=chain_info)
 
             st.divider()
+
+            if len(response.step_results) > 1:
+                st.markdown("#### 🔗 Multi-Step Orchestration Pipeline")
+                step_cols = st.columns(len(response.step_results))
+                for idx, (col, step) in enumerate(zip(step_cols, response.step_results)):
+                    with col:
+                        st.success(f"**Step {step['step']}:** `{step['skill']}`\n\n{step['skill_name']}")
+
             st.markdown(response.response)
 
             if response.validation_notes:

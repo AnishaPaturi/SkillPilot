@@ -52,6 +52,28 @@ def test_agent_skill_chaining(agent):
     assert res.step_results[1]["skill"] == "documentation"
     assert "Step 1: Security Analysis" in res.response
     assert "Step 2: Documentation" in res.response
+    # Verify Step 2 documentation incorporates vulnerabilities from Step 1
+    assert "Vulnerabilit" in res.step_results[1]["output"]
+    assert res.is_valid is True
+
+
+def test_agent_three_step_chaining(agent):
+    query = "Review this code for bugs, then analyze security vulnerabilities, after that generate documentation"
+    code = "import os\nAPI_KEY = 'secret_12345678'\ndef bad(items=[]):\n    os.system('echo ' + str(items))\n"
+    res = agent.run(query, code=code)
+    assert res.skill_chain == ["code_analysis", "security_analysis", "documentation"]
+    assert len(res.step_results) == 3
+    assert res.step_results[0]["skill"] == "code_analysis"
+    assert res.step_results[1]["skill"] == "security_analysis"
+    assert res.step_results[2]["skill"] == "documentation"
+    assert res.is_valid is True
+
+
+def test_agent_chaining_missing_input(agent):
+    query = "Analyze this Python API for security issues and then create documentation explaining the vulnerabilities."
+    res = agent.run(query, code=None)
+    assert res.skill_chain == ["security_analysis", "documentation"]
+    assert "requires source code" in res.response
 
 
 def test_agent_conversational_memory(agent):

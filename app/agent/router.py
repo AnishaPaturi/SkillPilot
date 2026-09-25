@@ -182,10 +182,75 @@ Do not invent skills.
             "Analyze this Python API for security issues and then create documentation explaining the vulnerabilities."
             -> ["security_analysis", "documentation"]
         """
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if api_key and api_key != "your_openrouter_api_key_here":
+            try:
+                llm_chain = self._plan_chain_with_llm(query, code)
+                if llm_chain:
+                    return llm_chain
+            except Exception:
+                pass
+
+        return self._plan_chain_heuristic(query, code)
+
+    def _plan_chain_with_llm(self, query: str, code: Optional[str] = None) -> List[str]:
+        """LLM-based multi-step chain planning using OpenRouter."""
+        from langchain_openai import ChatOpenAI
+        from langchain_core.messages import SystemMessage, HumanMessage
+
+        model_name = os.getenv("MODEL_NAME", "google/gemini-2.0-flash-001")
+        base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+        api_key = os.getenv("OPENROUTER_API_KEY")
+
+        llm = ChatOpenAI(
+            model=model_name,
+            openai_api_key=api_key,
+            openai_api_base=base_url,
+            temperature=0.0,
+        )
+
+        catalog = self.registry.get_skills_catalog_prompt()
+        system_prompt = f"""You are the SkillPilot Multi-Step Chain Planner.
+Analyze the user request and determine the exact ordered sequence of skills needed to fulfill it.
+{catalog}
+
+Return a valid JSON object only with format:
+{{
+  "skill_chain": ["skill_id_1", "skill_id_2"],
+  "reasoning": "brief explanation"
+}}
+Rules:
+1. If the user request asks for multiple steps (e.g., analyze security issues AND THEN create documentation), return them in sequential order in "skill_chain".
+2. If only one skill is needed, return a 1-element list.
+3. If no skills match, return an empty list: [].
+4. Do not invent skills. Only use IDs from the catalog.
+"""
+        user_prompt = f"User Request: {query}\n"
+        if code:
+            user_prompt += f"Code Context:\n```\n{code[:500]}\n```"
+
+        response = llm.invoke([
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_prompt)
+        ])
+
+        content = response.content
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+        elif "```" in content:
+            content = content.split("```")[1].split("```")[0].strip()
+        data = json.loads(content)
+        raw_chain = data.get("skill_chain", [])
+        valid_ids = {s.id for s in self.registry.list_skills()}
+        filtered = [sid for sid in raw_chain if sid in valid_ids]
+        return filtered
+
+    def _plan_chain_heuristic(self, query: str, code: Optional[str] = None) -> List[str]:
+        """Deterministic heuristic chain planner for multi-step requests."""
         q_lower = query.lower()
 
-        # Split on sequential conjunctions: 'and then', 'then', 'followed by', 'after that'
-        split_pattern = r"\b(?:and\s+then|followed\s+by|after\s+that|then)\b"
+        # Split on sequential conjunctions: 'and then', 'then', 'followed by', 'after that', 'subsequently', 'next', 'and after that'
+        split_pattern = r"\b(?:and\s+then|followed\s+by|after\s+that|and\s+afterwards|subsequently|next|then)\b"
         segments = re.split(split_pattern, q_lower)
 
         chain: List[str] = []
@@ -197,6 +262,24 @@ Do not invent skills.
                 skill_id, _ = self.route(seg_clean, code)
                 if skill_id and (not chain or chain[-1] != skill_id):
                     chain.append(skill_id)
+
+        # Check compound requests connected by 'and' + action verb
+        if len(chain) <= 1:
+            and_segments = re.split(
+                r"\band\s+(?:also\s+)?(?=create|generate|write|document|explain|analyze|review|check|find|plan|break)\b",
+                q_lower,
+            )
+            if len(and_segments) > 1:
+                potential_chain: List[str] = []
+                for seg in and_segments:
+                    seg_clean = seg.strip()
+                    if not seg_clean:
+                        continue
+                    sid, _ = self.route(seg_clean, code)
+                    if sid and (not potential_chain or potential_chain[-1] != sid):
+                        potential_chain.append(sid)
+                if len(potential_chain) > 1:
+                    chain = potential_chain
 
         # Fallback to single primary skill if no chain markers found
         if not chain:
