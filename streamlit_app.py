@@ -26,6 +26,10 @@ if "history" not in st.session_state:
     st.session_state.history = []
 if "last_response" not in st.session_state:
     st.session_state.last_response = None
+if "prompt_input" not in st.session_state:
+    st.session_state.prompt_input = "Analyze this Java code for bugs..."
+if "code_input" not in st.session_state:
+    st.session_state.code_input = ""
 
 # Sidebar: Controls & Multi-Turn History
 with st.sidebar:
@@ -36,14 +40,16 @@ with st.sidebar:
     st.caption(f"Session Thread: `{st.session_state.session_id}`")
     st.caption(f"Turns in Memory: `{len(st.session_state.history)}`")
 
-    if st.button("🗑️ Reset Conversation Memory", use_container_width=True):
+    if st.button("🗑️ Reset Conversation Memory", use_container_width=True, key="reset_memory_btn"):
         st.session_state.session_id = f"session_{uuid.uuid4().hex[:8]}"
         st.session_state.history = []
         st.session_state.last_response = None
+        st.session_state.prompt_input = "Analyze this Java code for bugs..."
+        st.session_state.code_input = ""
         st.success("Started new session!")
         st.rerun()
 
-    if st.button("🔄 Reload skills.md", use_container_width=True):
+    if st.button("🔄 Reload skills.md", use_container_width=True, key="reload_skills_btn"):
         st.session_state.registry.reload()
         st.session_state.agent = SkillPilotAgent(registry=st.session_state.registry)
         st.success("Reloaded skills.md successfully!")
@@ -56,9 +62,9 @@ with st.sidebar:
             st.markdown(f"**Turn {item['turn']}:** `{item['user_request']}`")
             st.caption(f"Executed: `{item['selected_skill']}`")
 
-# Header
-st.markdown("<h1 style='text-align: center; margin-bottom: 0;'>SKILLPILOT</h1>", unsafe_allow_html=True)
-st.markdown("<h4 style='text-align: center; color: #888; margin-top: 4px; font-weight: normal;'>Skill-Driven AI Development Agent</h4>", unsafe_allow_html=True)
+# Header Section
+st.markdown("<h1 style='text-align: center; margin-bottom: 2px; font-weight: 800; letter-spacing: 0.05em;'>SKILLPILOT</h1>", unsafe_allow_html=True)
+st.markdown("<h4 style='text-align: center; color: #888; margin-top: 0px; margin-bottom: 18px; font-weight: normal;'>Skill-Driven AI Development Agent</h4>", unsafe_allow_html=True)
 st.divider()
 
 # Section 1: Available Skills
@@ -72,64 +78,66 @@ st.divider()
 # Section 2: Ask SkillPilot...
 st.markdown("### Ask SkillPilot...")
 
-# Quick sample chips
+# Quick sample chips for one-click testing
 sample_cols = st.columns(3)
-sample_prompt = ""
-sample_code = ""
-
-if sample_cols[0].button("🐞 Java Bug Scan"):
-    sample_prompt = "Analyze this Java code for bugs and concurrency issues"
-    sample_code = """public class UserManager {
+if sample_cols[0].button("🐞 Java Bug Scan", use_container_width=True, key="chip_java"):
+    st.session_state.prompt_input = "Analyze this Java code for bugs..."
+    st.session_state.code_input = """public class UserManager {
     private List<String> users = new ArrayList<>();
     public void addUser(String user) {
         users.add(user);
     }
 }"""
-elif sample_cols[1].button("🔒 Security & Docs Chain"):
-    sample_prompt = "Analyze this Python API for security issues and then create documentation explaining the vulnerabilities."
-    sample_code = """import os
+elif sample_cols[1].button("🔒 Security & Docs Chain", use_container_width=True, key="chip_security"):
+    st.session_state.prompt_input = "Analyze this Python API for security issues and then create documentation explaining the vulnerabilities."
+    st.session_state.code_input = """import os
 API_KEY = "sk_live_secret_key"
 def run(cmd):
     os.system(cmd)
 """
-elif sample_cols[2].button("💬 Memory Follow-up"):
-    sample_prompt = "Now document those issues."
-    sample_code = ""
+elif sample_cols[2].button("💬 Memory Follow-up", use_container_width=True, key="chip_memory"):
+    st.session_state.prompt_input = "Now document those issues."
+    st.session_state.code_input = ""
 
 query_text = st.text_area(
     "Query",
-    value=sample_prompt,
+    value=st.session_state.prompt_input,
     placeholder="Analyze this Java code for bugs...",
     height=100,
     label_visibility="collapsed",
+    key="query_area",
 )
 
-with st.expander("📎 Optional: Code or Configuration Snippet", expanded=bool(sample_code)):
+with st.expander("📎 Optional: Code or Configuration Snippet", expanded=bool(st.session_state.code_input)):
     code_text = st.text_area(
         "Code Snippet",
-        value=sample_code,
+        value=st.session_state.code_input,
         placeholder="Paste source code or configuration here (optional if included in prompt or relying on prior turn memory)...",
-        height=160,
+        height=140,
         label_visibility="collapsed",
+        key="code_area",
     )
 
-execute_button = st.button("Execute", type="primary", use_container_width=True)
+_, center_col, _ = st.columns([1, 2, 1])
+with center_col:
+    execute_button = st.button("Execute", type="primary", use_container_width=True, key="execute_btn")
 
 # Execution Action
 if execute_button:
-    if not query_text.strip():
+    eff_query = query_text.strip() if query_text else ""
+    if not eff_query:
         st.warning("Please enter a query or request for SkillPilot.")
     else:
         with st.spinner("SkillPilot routing and executing..."):
             response = st.session_state.agent.run(
-                query=query_text,
+                query=eff_query,
                 code=code_text.strip() if code_text and code_text.strip() else None,
                 session_id=st.session_state.session_id,
             )
             st.session_state.last_response = response
             st.session_state.history = response.execution_history
 
-# Section 3: Result Display
+# Section 3: Result Display (matching Phase 8 wireframe)
 if st.session_state.last_response:
     res = st.session_state.last_response
     st.divider()
@@ -145,7 +153,7 @@ if st.session_state.last_response:
     st.markdown(f"**Execution:** {status_icon}")
 
     st.markdown("### Result")
-    st.markdown("---")
+    st.markdown("──────────────────────────────────────────")
     st.markdown(res.response)
 
     if res.validation_notes:

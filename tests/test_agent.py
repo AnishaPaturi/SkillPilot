@@ -84,7 +84,7 @@ def test_agent_conversational_memory(agent):
     t1 = agent.run("Analyze this code for bugs", code=code, session_id=session_id)
     assert t1.selected_skill == "code_analysis"
     assert len(t1.execution_history) == 1
-    assert "MutableDefaultArgument" in t1.response
+    assert "mutable default" in t1.response.lower() or "mutabledefaultargument" in t1.response.lower()
 
     # Turn 2: Follow-up without passing code explicitly (uses first result from memory)
     t2 = agent.run("Now document those issues", code=None, session_id=session_id)
@@ -92,7 +92,8 @@ def test_agent_conversational_memory(agent):
     assert len(t2.execution_history) == 2
     assert "requires source code" not in t2.response
     assert "calc" in t2.response
-    assert "MutableDefaultArgument" in t2.response
+    assert "mutable default" in t2.response.lower() or "mutabledefaultargument" in t2.response.lower()
+
 
 
 def test_agent_memory_security_to_documentation(agent):

@@ -18,7 +18,16 @@ class CodeAnalyzerTool:
         inefficiencies: List[Dict[str, Any]] = []
         improvements: List[str] = []
 
-        # 1. Syntax Check
+        # Check if code is Java before reporting Python syntax failure
+        is_java = any(k in code for k in [
+            "public class", "private ", "protected ", "public static void",
+            "System.out", "ArrayList<", "List<", "Map<", "String[]", "package "
+        ])
+
+        if is_java:
+            return cls._analyze_java(code)
+
+        # 1. Python Syntax Check
         try:
             tree = ast.parse(code)
         except SyntaxError as e:
@@ -123,7 +132,89 @@ class CodeAnalyzerTool:
             },
         }
 
+    @classmethod
+    def _analyze_java(cls, code: str) -> Dict[str, Any]:
+        """Analyzes Java source code for common bugs, concurrency risks, and code smells."""
+        bugs: List[Dict[str, Any]] = []
+        inefficiencies: List[Dict[str, Any]] = []
+        improvements: List[str] = []
+
+        lines = code.splitlines()
+        has_arraylist = False
+        has_synchronization = False
+        class_names = []
+
+        for idx, line in enumerate(lines, 1):
+            clean_l = line.strip()
+
+            # Detect class definition
+            class_match = re.search(r"class\s+(\w+)", clean_l)
+            if class_match:
+                class_names.append(class_match.group(1))
+
+            # Concurrency / Thread safety check
+            if "ArrayList" in clean_l:
+                has_arraylist = True
+            if "synchronized" in clean_l or "Concurrent" in clean_l or "CopyOnWrite" in clean_l:
+                has_synchronization = True
+
+            # String equality check (== instead of .equals)
+            if re.search(r'\w+\s*==\s*".*"', clean_l) or re.search(r'".*"\s*==\s*\w+', clean_l):
+                bugs.append({
+                    "type": "StringReferenceComparison",
+                    "line": idx,
+                    "description": "String comparison performed with '==' instead of '.equals()'. This compares references rather than values.",
+                    "severity": "High",
+                })
+                improvements.append(f"Line {idx}: Replace '==' with '.equals()' for String comparison.")
+
+            # Missing null check on add/put
+            if re.search(r"\b(add|put)\s*\(\s*(\w+)\s*\)", clean_l):
+                arg = re.search(r"\b(add|put)\s*\(\s*(\w+)\s*\)", clean_l).group(2)
+                if arg not in ["null", "true", "false"] and not arg.isdigit():
+                    inefficiencies.append({
+                        "type": "PotentialNullPointerException",
+                        "line": idx,
+                        "description": f"Adding '{arg}' to collection without null validation check.",
+                    })
+                    improvements.append(f"Line {idx}: Validate '{arg} != null' before inserting into collection.")
+
+            # Empty catch block
+            if re.search(r"catch\s*\([^)]+\)\s*\{\s*\}", clean_l):
+                bugs.append({
+                    "type": "EmptyCatchBlock",
+                    "line": idx,
+                    "description": "Exception caught and completely swallowed with empty catch block.",
+                    "severity": "Medium",
+                })
+                improvements.append(f"Line {idx}: Log the exception or rethrow properly.")
+
+        if has_arraylist and not has_synchronization:
+            bugs.append({
+                "type": "ThreadSafetyHazard",
+                "line": 1,
+                "description": "ArrayList is not thread-safe. Concurrent modifications by multiple threads will lead to race conditions or ConcurrentModificationException.",
+                "severity": "Medium",
+            })
+            improvements.append("Use a thread-safe collection (e.g. Collections.synchronizedList or CopyOnWriteArrayList) if accessed concurrently.")
+
+        if not improvements:
+            improvements.append("Java structure is clean. Consider adding JavaDoc comments and defensive copy getters.")
+
+        return {
+            "bugs": bugs,
+            "inefficiencies": inefficiencies,
+            "improvements": improvements,
+            "metrics": {
+                "lines_of_code": len(lines),
+                "syntax_valid": True,
+                "classes_found": class_names,
+                "language": "java",
+            },
+        }
+
     # Backward compatibility helper
     @classmethod
     def analyze_python_code(cls, code: str) -> Dict[str, Any]:
         return cls.analyze(code)
+

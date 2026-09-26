@@ -71,6 +71,43 @@ Agent retrieves Turn 1 skill_result & code from AgentState
 Agent executes Skill 2 (documentation) explaining Turn 1 issues
 ```
 
+### Streamlit User Interface (Phase 8)
+```
+┌──────────────────────────────────────────────┐
+│              SKILLPILOT                     │
+│     Skill-Driven AI Development Agent       │
+├──────────────────────────────────────────────┤
+│                                              │
+│  Available Skills                            │
+│                                              │
+│  ✓ Code Analysis                             │
+│  ✓ Security Analysis                         │
+│  ✓ Documentation                             │
+│  ✓ Code Explanation                          │
+│  ✓ Task Planning                             │
+│                                              │
+├──────────────────────────────────────────────┤
+│                                              │
+│  Ask SkillPilot...                           │
+│  ┌────────────────────────────────────────┐  │
+│  │ Analyze this Java code for bugs...     │  │
+│  └────────────────────────────────────────┘  │
+│                                              │
+│                  [ Execute ]                 │
+│                                              │
+├──────────────────────────────────────────────┤
+│                                              │
+│  Selected Skill: CODE_ANALYSIS               │
+│                                              │
+│  Execution: ✓                                │
+│                                              │
+│  Result                                      │
+│  ──────────────────────────────────────────  │
+│  ...                                         │
+│                                              │
+└──────────────────────────────────────────────┘
+```
+
 ---
 
 ## 🚀 Quickstart
@@ -87,15 +124,21 @@ uv pip install -r requirements.txt
 Configure your OpenRouter API key in `.env`:
 ```ini
 OPENROUTER_API_KEY=your_key_here
-MODEL_NAME=google/gemini-2.0-flash-001
+MODEL_NAME=google/gemini-3.8-flash
 ```
 
-### 3. Run FastAPI Backend
+### 3. Run Streamlit UI (Phase 8)
+```bash
+streamlit run streamlit_app.py
+```
+Or run the automated headless verification:
+```bash
+python examples/phase8_ui_demo.py
+pytest tests/test_ui.py
+```
+
+### 4. Run FastAPI Backend
 ```bash
 uvicorn app.main:app --reload
 ```
 
-### 4. Run Streamlit UI
-```bash
-streamlit run streamlit_app.py
-```

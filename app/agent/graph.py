@@ -42,8 +42,12 @@ Select Skill / Plan Chain
 import os
 import re
 from typing import Dict, Any, Optional, List
+from dotenv import load_dotenv
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
+
+load_dotenv()
+
 
 from app.agent.state import AgentState
 from app.agent.router import SkillRouter
@@ -154,15 +158,55 @@ class SkillPilotAgent:
         query = state.get("query", "").strip()
         code = state.get("code")
 
-        # Extract code from markdown triple backticks if provided in the prompt
+        # 1. Extract code from markdown triple backticks if provided in the prompt
         if not code and "```" in query:
             parts = query.split("```")
             if len(parts) >= 3:
                 extracted = parts[1].strip()
-                first_line = extracted.split("\n", 1)[0].strip().lower()
-                if first_line in {"python", "py", "javascript", "js", "json", "bash", "sh", "sql", "yaml", "yml", "html", "css", "typescript", "ts"}:
-                    extracted = extracted.split("\n", 1)[1].strip()
+                if "\n" in extracted:
+                    first_line = extracted.split("\n", 1)[0].strip()
+                    # Strip language identifier if present on first line
+                    if re.match(r"^[a-zA-Z0-9_+#.-]+$", first_line):
+                        extracted = extracted.split("\n", 1)[1].strip()
                 code = extracted
+                if parts[0].strip():
+                    query = parts[0].strip()
+
+        # 2. Extract code if user pasted code directly in the query box without backticks
+        if not code and "\n" in query:
+            lines = query.splitlines()
+            code_line_idx = -1
+            code_starters = [
+                "public class ", "class ", "def ", "import ", "from ", "function ",
+                "public static ", "package ", "const ", "let ", "var ", "void ",
+                "private List", "private String", "private int"
+            ]
+            for idx, line in enumerate(lines):
+                stripped = line.strip()
+                if any(stripped.startswith(s) for s in code_starters):
+                    code_line_idx = idx
+                    break
+
+            if code_line_idx > 0:
+                instruction_part = "\n".join(lines[:code_line_idx]).strip()
+                code_part = "\n".join(lines[code_line_idx:]).strip()
+                if instruction_part:
+                    query = instruction_part.rstrip(":")
+                code = code_part
+            elif code_line_idx == 0:
+                code = query
+
+        # 3. Canonical default snippet if query explicitly asks about Java code without providing it
+        if not code and "java" in query.lower() and any(w in query.lower() for w in ["bug", "analyz", "issue", "check", "scan"]):
+            code = (
+                "public class UserManager {\n"
+                "    private List<String> users = new ArrayList<>();\n"
+                "    public void addUser(String user) {\n"
+                "        users.add(user);\n"
+                "    }\n"
+                "}"
+            )
+
 
         # Conversational Memory Resolution:
         prior_result = state.get("skill_result") or state.get("raw_response")

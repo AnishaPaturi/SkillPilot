@@ -1,12 +1,17 @@
 """Executor module for running specialized skills."""
 import os
 from typing import Dict, Any, Optional
+from dotenv import load_dotenv
+
 from app.models.schemas import SkillDefinition
 from app.tools.code_analyzer import CodeAnalyzerTool
 from app.tools.security_analyzer import SecurityAnalyzerTool
 from app.tools.documentation import DocumentationTool
 from app.tools.code_explainer import CodeExplainerTool
 from app.tools.task_planner import TaskPlannerTool
+
+load_dotenv()
+
 
 
 class SkillExecutor:
@@ -149,7 +154,13 @@ You MUST structure your response to clearly address each of the following:
                 lines.append(f"- {imp}")
 
             lines.append("\n### 4. Improved Code")
-            lines.append("```python\n# Clean, optimized version\n" + (code or "# No source code provided") + "\n```")
+            lang_tag = "python"
+            if code:
+                if any(k in code for k in ["public class", "public static void", "System.out", "ArrayList<", "List<String>"]):
+                    lang_tag = "java"
+                elif any(k in code for k in ["function ", "const ", "let ", "console.log"]):
+                    lang_tag = "javascript"
+            lines.append(f"```{lang_tag}\n// Clean, optimized version\n" + (code or "// No source code provided") + "\n```" if lang_tag == "java" else f"```{lang_tag}\n# Clean, optimized version\n" + (code or "# No source code provided") + "\n```")
             return "\n".join(lines)
 
         # 2. Security Analysis Output
