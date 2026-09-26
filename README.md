@@ -142,3 +142,30 @@ pytest tests/test_ui.py
 uvicorn app.main:app --reload
 ```
 
+---
+
+## 🧪 Phase 9 — Testing & Evaluation
+
+SkillPilot includes rigorous test suites to evaluate skill routing accuracy and enforce strict non-hallucination boundaries.
+
+### Core Test Cases:
+| Test # | Query | Expected Skill | Result |
+|---|---|---|---|
+| **Test 1** | `"Explain this Java code."` | `code_explanation` | ✓ Passed |
+| **Test 2** | `"Find vulnerabilities in this API."` | `security_analysis` | ✓ Passed |
+| **Test 3** | `"Create a README for this project."` | `documentation` | ✓ Passed |
+| **Test 4** | `"Give me a roadmap for building this application."` | `task_planning` | ✓ Passed |
+| **Test 5** | `"Tell me a joke."` | `No matching skill.` | ✓ Passed |
+
+> **Anti-Hallucination Guardrail:** Non-developer queries (jokes, weather, recipes, trivia) are strictly identified as having no matching skill rather than inventing creative imaginary capabilities.
+
+### Run Phase 9 Tests:
+```bash
+# Run automated evaluation script
+python examples/phase9_evaluation_demo.py
+
+# Run pytest test suite
+pytest tests/test_phase9_evaluation.py -v
+```
+
+

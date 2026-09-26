@@ -44,16 +44,37 @@ class SkillRouter:
         }
 
         DISTINCTIVE_ANCHORS = {
-            "security_analysis": ["secur", "vulnerab", "secret", "credential", "auth", "inject"],
-            "code_explanation": ["explain", "line by line", "how does", "what does", "how it works", "walkthrough"],
-            "documentation": ["document", "readme", "api doc", "technical doc", "setup instruction"],
-            "task_planning": ["plan", "phase", "step", "how to build", "how to implement", "architect", "break down"],
-            "code_analysis": ["bug", "improv", "inefficien", "refactor", "code quality", "smell", "review"],
+            "security_analysis": [
+                r"\bsecur", r"\bvulnerab", r"\bsecret", r"\bcredential",
+                r"\bauth\b", r"\bauthenticat", r"\bauthoriz", r"\binject",
+                r"\bcve\b", r"\bflaw", r"\brisk", r"\bexploit"
+            ],
+            "code_explanation": [
+                r"\bexplain", r"\bline by line\b", r"\bhow does\b", r"\bwhat does\b",
+                r"\bhow it works\b", r"\bwalkthrough\b"
+            ],
+            "documentation": [
+                r"\bdocument", r"\breadme\b", r"\bapi doc", r"\btechnical doc",
+                r"\bsetup instruction", r"\bguide\b"
+            ],
+            "task_planning": [
+                r"\bplan", r"\bphase", r"\bstep", r"\bhow to build\b", r"\bbuilding\b",
+                r"\broadmap\b", r"\bmilestone", r"\btimeline", r"\bhow to implement\b",
+                r"\barchitect", r"\bbreak down\b"
+            ],
+            "code_analysis": [
+                r"\bbug", r"\bimprov", r"\binefficien", r"\brefactor",
+                r"\bcode quality\b", r"\bsmell", r"\breview\b"
+            ],
         }
 
-        for skill_id, anchors in DISTINCTIVE_ANCHORS.items():
-            if skill_id in scores and any(anchor in q_lower for anchor in anchors):
-                scores[skill_id] += 15
+        for skill_id, patterns in DISTINCTIVE_ANCHORS.items():
+            if skill_id in scores:
+                for pattern in patterns:
+                    if re.search(pattern, q_lower):
+                        scores[skill_id] += 15
+                        break
+
 
         for skill in skills:
             # Check exact skill ID match

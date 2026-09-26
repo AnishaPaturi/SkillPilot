@@ -268,7 +268,7 @@ class SkillPilotAgent:
                 "selected_skill": None,
                 "skill_chain": [],
                 "is_chained": False,
-                "final_response": "I don't currently have a skill that matches this request.",
+                "final_response": "No matching skill. I don't currently have a skill that matches this request.",
                 "is_valid": True,
             }
 
