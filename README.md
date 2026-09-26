@@ -17,24 +17,61 @@
 
 ## 🏗️ Architecture
 
-### Single-Skill Flow
+### 🔄 Final Project Workflow
 ```
-User Request
-     ↓
-FastAPI Endpoint
-     ↓
-Agent Controller (LangGraph)
-     ↓
-Skill Loader (skills.md)
-     ↓
-Skill Router
-     ↓
-Specialized Skill Execution (code_analysis, security_analysis, task_planning, etc.)
-     ↓
-Output Validator
-     ↓
-Validated Response
+                 USER
+                   │
+                   ▼
+            ┌──────────────┐
+            │ Request      │
+            │ Analyzer     │
+            └──────┬───────┘
+                   │
+                   ▼
+            ┌──────────────┐
+            │ skills.md    │
+            │ Skill Loader │
+            └──────┬───────┘
+                   │
+                   ▼
+            ┌──────────────┐
+            │ Skill Router │
+            └──────┬───────┘
+                   │
+          ┌────────┼────────┐
+          ▼        ▼        ▼
+       Skill A  Skill B  Skill C  ...
+          │        │        │
+          └────────┼────────┘
+                   ▼
+             ┌───────────┐
+             │ Executor  │
+             └─────┬─────┘
+                   ▼
+             ┌───────────┐
+             │ Validator │
+             └─────┬─────┘
+                   ▼
+             ┌───────────┐
+             │ Response  │
+             └───────────┘
 ```
+
+#### Workflow Component Mapping:
+1. **Request Analyzer (`app/agent/graph.py`)**:
+   - Parses the user prompt, extracts source code (supporting markdown backticks and inline blocks), and inspects conversation memory checkpoints to resolve follow-up context.
+2. **Skill Loader (`skills.md` & `app/skills/`)**:
+   - Declaratively externalizes capabilities in markdown. Loads and indexes definitions dynamically with zero code changes required to add skills.
+3. **Skill Router (`app/agent/router.py`)**:
+   - Performs semantic intent matching against active skills catalog. Plans single-skill execution or multi-step skill sequences (`plan_chain`), strictly enforcing anti-hallucination boundaries for off-domain queries.
+4. **Specialized Skills Branches (`Skill A`, `Skill B`, `Skill C` ...)**:
+   - Dedicated LangGraph execution nodes dispatching to specialized tools: `code_analysis`, `security_analysis`, `documentation`, `code_explanation`, `task_planning`.
+5. **Executor (`app/agent/executor.py`)**:
+   - Injects instructions, constraints, and tool diagnostics into the model context, orchestrating LLM execution or deterministic offline fallback.
+6. **Validator (`app/agent/validator.py`)**:
+   - Enforces output contract compliance against markdown specifications before releasing outputs.
+7. **Response (`app/models/schemas.py` & UI)**:
+   - Delivers validated results, updates multi-turn memory checkpoints, and renders across Streamlit UI, FastAPI endpoints, and CLI.
 
 ### Multi-Step Skill Chaining (Phase 6)
 ```
