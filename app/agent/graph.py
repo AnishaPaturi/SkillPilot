@@ -159,15 +159,46 @@ class SkillPilotAgent:
             parts = query.split("```")
             if len(parts) >= 3:
                 extracted = parts[1].strip()
-                if "\n" in extracted:
-                    extracted = extracted.split("\n", 1)[1]
+                first_line = extracted.split("\n", 1)[0].strip().lower()
+                if first_line in {"python", "py", "javascript", "js", "json", "bash", "sh", "sql", "yaml", "yml", "html", "css", "typescript", "ts"}:
+                    extracted = extracted.split("\n", 1)[1].strip()
                 code = extracted
 
         # Conversational Memory Resolution:
         prior_result = state.get("skill_result") or state.get("raw_response")
-        if code and prior_result and any(w in query.lower() for w in ["issue", "vulnerab", "result", "output", "finding", "those", "that", "them"]):
-            if "Prior Analysis Results from Memory" not in code:
-                code = f"{code}\n\n# Prior Analysis Results from Memory:\n{prior_result}"
+        history = state.get("execution_history", [])
+
+        # If incoming code was None, check if prior code exists in memory / history
+        if not code and history:
+            for h in reversed(history):
+                if h.get("code"):
+                    code = h["code"]
+                    break
+
+        # Extract clean code if it already has context markers from a previous run
+        clean_code = code or ""
+        for marker in [
+            "# ========================================================",
+            "# Prior Analysis Results from Memory",
+            "# [Prior Turn Context & Skill Result from Memory]",
+        ]:
+            if marker in clean_code:
+                clean_code = clean_code.split(marker)[0].strip()
+
+        # Connect memory if prior results exist and the query is a follow-up or refers to them
+        is_followup = any(w in query.lower() for w in [
+            "issue", "vulnerab", "result", "output", "finding", "bug", "those", "that", "them", "now", "it", "earlier", "previous", "prior"
+        ])
+        if prior_result and (is_followup or not code):
+            code = (
+                f"{clean_code}\n\n"
+                f"# ========================================================\n"
+                f"# [Prior Turn Context & Skill Result from Memory]\n"
+                f"# ========================================================\n"
+                f"{prior_result}"
+            )
+        else:
+            code = clean_code if clean_code else None
 
         return {
             **state,
@@ -442,6 +473,15 @@ class SkillPilotAgent:
                 final_answer = state.get("raw_response") or "No response generated."
 
         # Update Conversation Memory & Execution History
+        clean_code = state.get("code") or ""
+        for marker in [
+            "# ========================================================",
+            "# Prior Analysis Results from Memory",
+            "# [Prior Turn Context & Skill Result from Memory]",
+        ]:
+            if marker in clean_code:
+                clean_code = clean_code.split(marker)[0].strip()
+
         history = list(state.get("execution_history", []))
         turn_num = len(history) + 1
         history.append({
@@ -449,6 +489,7 @@ class SkillPilotAgent:
             "user_request": state.get("query"),
             "selected_skill": state.get("selected_skill_id"),
             "skill_result": final_answer,
+            "code": clean_code if clean_code else None,
             "is_valid": state.get("is_valid", True),
         })
 
@@ -458,8 +499,11 @@ class SkillPilotAgent:
 
         return {
             **state,
+            "user_request": state.get("query", ""),
+            "selected_skill": state.get("selected_skill_id"),
             "final_response": final_answer,
             "skill_result": final_answer,
+            "code": clean_code if clean_code else None,
             "execution_history": history,
             "messages": messages,
         }

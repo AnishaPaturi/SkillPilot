@@ -25,9 +25,9 @@ class SkillExecutor:
         if api_key and api_key != "your_openrouter_api_key_here":
             try:
                 return cls._execute_llm(skill, query, code, tool_findings)
-            except Exception as e:
-                # If LLM execution fails, provide informative message
-                return f"LLM execution failed: {str(e)}. Please check your API key and network connection."
+            except Exception:
+                # Gracefully fall back to deterministic offline execution if LLM fails
+                return cls._execute_offline(skill, query, code, tool_findings)
 
         return cls._execute_offline(skill, query, code, tool_findings)
 
@@ -62,7 +62,7 @@ class SkillExecutor:
         from langchain_openai import ChatOpenAI
         from langchain_core.messages import SystemMessage, HumanMessage
 
-        model_name = os.getenv("MODEL_NAME", "google/gemini-2.0-flash-001")
+        model_name = os.getenv("MODEL_NAME", "google/gemini-3.8-flash")
         base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
         api_key = os.getenv("OPENROUTER_API_KEY")
 
@@ -71,6 +71,7 @@ class SkillExecutor:
             openai_api_key=api_key,
             openai_api_base=base_url,
             temperature=0.2,
+            max_tokens=int(os.getenv("MAX_TOKENS", "2048")),
         )
 
         constraints_str = "\n".join(f"- {c}" for c in skill.constraints)

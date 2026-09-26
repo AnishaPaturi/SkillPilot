@@ -101,7 +101,7 @@ class SkillRouter:
         from langchain_openai import ChatOpenAI
         from langchain_core.messages import SystemMessage, HumanMessage
 
-        model_name = os.getenv("MODEL_NAME", "google/gemini-2.0-flash-001")
+        model_name = os.getenv("MODEL_NAME", "google/gemini-3.8-flash")
         base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
         api_key = os.getenv("OPENROUTER_API_KEY")
 
@@ -110,6 +110,7 @@ class SkillRouter:
             openai_api_key=api_key,
             openai_api_base=base_url,
             temperature=0.0,
+            max_tokens=int(os.getenv("MAX_TOKENS", "1000")),
         )
 
         catalog = self.registry.get_skills_catalog_prompt()
@@ -198,7 +199,7 @@ Do not invent skills.
         from langchain_openai import ChatOpenAI
         from langchain_core.messages import SystemMessage, HumanMessage
 
-        model_name = os.getenv("MODEL_NAME", "google/gemini-2.0-flash-001")
+        model_name = os.getenv("MODEL_NAME", "google/gemini-3.8-flash")
         base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
         api_key = os.getenv("OPENROUTER_API_KEY")
 
@@ -207,6 +208,7 @@ Do not invent skills.
             openai_api_key=api_key,
             openai_api_base=base_url,
             temperature=0.0,
+            max_tokens=int(os.getenv("MAX_TOKENS", "1000")),
         )
 
         catalog = self.registry.get_skills_catalog_prompt()

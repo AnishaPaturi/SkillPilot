@@ -11,6 +11,7 @@
 - **Dynamic Routing**: Uses LLM semantic intent matching against skill definitions to select the appropriate capability.
 - **Output Validation**: Enforces skill-specific output contracts via Pydantic models before returning results.
 - **Multi-Step Skill Chaining**: Orchestrates sequential multi-skill execution workflows (e.g., Security Analysis → Documentation).
+- **Conversational Memory (Phase 7)**: Stateful multi-turn dialog tracking via LangGraph checkpointer, maintaining `messages`, `user_request`, `selected_skill`, `skill_result`, and `execution_history`.
 
 ---
 
@@ -46,6 +47,28 @@ Result / Context Handoff
 Skill 2: Documentation
      ↓
 Final Result
+```
+
+### Conversational Memory Across Turns (Phase 7)
+```
+Turn 1:
+User: "Analyze this code."
+     ↓
+Agent executes Skill 1 (code_analysis)
+     ↓
+AgentState records:
+  • messages
+  • user_request
+  • selected_skill
+  • skill_result (detected bugs / issues)
+  • execution_history
+
+Turn 2:
+User: "Now document those issues." (No code provided)
+     ↓
+Agent retrieves Turn 1 skill_result & code from AgentState
+     ↓
+Agent executes Skill 2 (documentation) explaining Turn 1 issues
 ```
 
 ---

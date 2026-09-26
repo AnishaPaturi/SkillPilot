@@ -1,19 +1,18 @@
-"""Streamlit UI for SkillPilot with Conversational Memory & Multi-Step Chaining."""
+"""Streamlit UI for SkillPilot matching the Phase 8 specification."""
 import streamlit as st
 import os
 import uuid
 from dotenv import load_dotenv
 
-from app.skills.loader import SkillLoader
 from app.skills.registry import SkillRegistry
 from app.agent.graph import SkillPilotAgent
 
 load_dotenv()
 
 st.set_page_config(
-    page_title="SkillPilot | Skill-Driven AI Agent",
+    page_title="SkillPilot | Skill-Driven AI Development Agent",
     page_icon="🧭",
-    layout="wide",
+    layout="centered",
 )
 
 # Initialize Session State
@@ -25,27 +24,14 @@ if "session_id" not in st.session_state:
     st.session_state.session_id = f"session_{uuid.uuid4().hex[:8]}"
 if "history" not in st.session_state:
     st.session_state.history = []
+if "last_response" not in st.session_state:
+    st.session_state.last_response = None
 
-# Sidebar: Skill Catalog & Memory Management
+# Sidebar: Controls & Multi-Turn History
 with st.sidebar:
-    st.title("🧭 Skill Catalog")
-    st.caption("Capabilities loaded dynamically from `skills.md`")
+    st.title("🧭 SkillPilot Controls")
+    st.caption("Runtime Configuration & Session Memory")
 
-    skills = st.session_state.registry.list_skills()
-    st.write(f"**Total Skills Loaded:** `{len(skills)}`")
-
-    for s in skills:
-        with st.expander(f"🔹 {s.name} (`{s.id}`)"):
-            st.markdown(f"**Description:** {s.description}")
-            st.markdown(f"**Input:** `{s.input_spec}`")
-            st.markdown("**Triggers:**")
-            for t in s.when_to_use[:3]:
-                st.caption(f"- {t}")
-            st.markdown("**Required Output:**")
-            for out in s.output_spec:
-                st.caption(f"- {out}")
-
-    st.divider()
     st.markdown("### 🧠 Conversation Memory")
     st.caption(f"Session Thread: `{st.session_state.session_id}`")
     st.caption(f"Turns in Memory: `{len(st.session_state.history)}`")
@@ -53,111 +39,114 @@ with st.sidebar:
     if st.button("🗑️ Reset Conversation Memory", use_container_width=True):
         st.session_state.session_id = f"session_{uuid.uuid4().hex[:8]}"
         st.session_state.history = []
-        st.success("Started new conversation session!")
+        st.session_state.last_response = None
+        st.success("Started new session!")
+        st.rerun()
 
     if st.button("🔄 Reload skills.md", use_container_width=True):
         st.session_state.registry.reload()
         st.session_state.agent = SkillPilotAgent(registry=st.session_state.registry)
         st.success("Reloaded skills.md successfully!")
+        st.rerun()
 
-# Main Panel
-st.title("🧭 SkillPilot")
-st.subheader("Skill-Driven Autonomous Agent Runtime")
-st.markdown(
-    "SkillPilot dynamically matches requests to skills in `skills.md`, chains sequential tasks, "
-    "and maintains conversation memory across multi-turn dialogs."
+    if st.session_state.history:
+        st.divider()
+        st.markdown("### 📜 Prior Turns")
+        for item in st.session_state.history:
+            st.markdown(f"**Turn {item['turn']}:** `{item['user_request']}`")
+            st.caption(f"Executed: `{item['selected_skill']}`")
+
+# Header
+st.markdown("<h1 style='text-align: center; margin-bottom: 0;'>SKILLPILOT</h1>", unsafe_allow_html=True)
+st.markdown("<h4 style='text-align: center; color: #888; margin-top: 4px; font-weight: normal;'>Skill-Driven AI Development Agent</h4>", unsafe_allow_html=True)
+st.divider()
+
+# Section 1: Available Skills
+st.markdown("### Available Skills")
+skills = st.session_state.registry.list_skills()
+for skill in skills:
+    st.markdown(f"✓ **{skill.name}**")
+
+st.divider()
+
+# Section 2: Ask SkillPilot...
+st.markdown("### Ask SkillPilot...")
+
+# Quick sample chips
+sample_cols = st.columns(3)
+sample_prompt = ""
+sample_code = ""
+
+if sample_cols[0].button("🐞 Java Bug Scan"):
+    sample_prompt = "Analyze this Java code for bugs and concurrency issues"
+    sample_code = """public class UserManager {
+    private List<String> users = new ArrayList<>();
+    public void addUser(String user) {
+        users.add(user);
+    }
+}"""
+elif sample_cols[1].button("🔒 Security & Docs Chain"):
+    sample_prompt = "Analyze this Python API for security issues and then create documentation explaining the vulnerabilities."
+    sample_code = """import os
+API_KEY = "sk_live_secret_key"
+def run(cmd):
+    os.system(cmd)
+"""
+elif sample_cols[2].button("💬 Memory Follow-up"):
+    sample_prompt = "Now document those issues."
+    sample_code = ""
+
+query_text = st.text_area(
+    "Query",
+    value=sample_prompt,
+    placeholder="Analyze this Java code for bugs...",
+    height=100,
+    label_visibility="collapsed",
 )
 
-col1, col2 = st.columns([1, 1])
-
-with col1:
-    st.markdown("### 💬 Request Input")
-    
-    # Predefined sample buttons
-    sample_col1, sample_col2, sample_col3 = st.columns(3)
-    preset_query = ""
-    preset_code = ""
-
-    if sample_col1.button("Security Scan"):
-        preset_query = "Analyze this Python code and find security vulnerabilities"
-        preset_code = """import os
-API_KEY = "sk_live_999888777666555444"
-
-def run_backup(user_path):
-    os.system("tar -czf backup.tar.gz " + user_path)
-"""
-    if sample_col2.button("Chained Request"):
-        preset_query = "Analyze this Python API for security issues and then create documentation explaining the vulnerabilities."
-        preset_code = """import os
-ADMIN_KEY = "secret_token_12345"
-def query_db(uid):
-    return "SELECT * FROM users WHERE id=" + uid
-"""
-    if sample_col3.button("Follow-up Turn"):
-        preset_query = "Now document those issues."
-        preset_code = ""
-
-    user_query = st.text_area(
-        "User Prompt / Goal",
-        value=preset_query,
-        placeholder="e.g. Analyze this Python code or 'Now document those issues'",
-        height=100,
+with st.expander("📎 Optional: Code or Configuration Snippet", expanded=bool(sample_code)):
+    code_text = st.text_area(
+        "Code Snippet",
+        value=sample_code,
+        placeholder="Paste source code or configuration here (optional if included in prompt or relying on prior turn memory)...",
+        height=160,
+        label_visibility="collapsed",
     )
 
-    user_code = st.text_area(
-        "Source Code / Configuration (Optional - memory retains prior code)",
-        value=preset_code,
-        placeholder="Paste code or config here (can leave blank for follow-up questions)...",
-        height=200,
-    )
+execute_button = st.button("Execute", type="primary", use_container_width=True)
 
-    submit = st.button("🚀 Execute Request", type="primary", use_container_width=True)
+# Execution Action
+if execute_button:
+    if not query_text.strip():
+        st.warning("Please enter a query or request for SkillPilot.")
+    else:
+        with st.spinner("SkillPilot routing and executing..."):
+            response = st.session_state.agent.run(
+                query=query_text,
+                code=code_text.strip() if code_text and code_text.strip() else None,
+                session_id=st.session_state.session_id,
+            )
+            st.session_state.last_response = response
+            st.session_state.history = response.execution_history
 
-with col2:
-    st.markdown("### ⚡ Execution & Response")
+# Section 3: Result Display
+if st.session_state.last_response:
+    res = st.session_state.last_response
+    st.divider()
 
-    if submit:
-        if not user_query.strip():
-            st.warning("Please enter a query or request.")
-        else:
-            with st.spinner("SkillPilot reasoning and executing..."):
-                response = st.session_state.agent.run(
-                    query=user_query,
-                    code=user_code if user_code.strip() else None,
-                    session_id=st.session_state.session_id,
-                )
-                st.session_state.history = response.execution_history
+    skill_display = (res.selected_skill or "UNKNOWN").upper()
+    if res.skill_chain and len(res.skill_chain) > 1:
+        chain_display = " ➔ ".join(s.upper() for s in res.skill_chain)
+        st.markdown(f"**Selected Skill:** `{chain_display}`")
+    else:
+        st.markdown(f"**Selected Skill:** `{skill_display}`")
 
-            # Metadata bar
-            meta_col1, meta_col2, meta_col3 = st.columns(3)
-            with meta_col1:
-                skill_badge = response.selected_skill or "None (Fallback)"
-                st.metric(label="Active Skill", value=skill_badge)
-            with meta_col2:
-                status_badge = "✅ Valid" if response.is_valid else "⚠️ Needs Review"
-                st.metric(label="Output Status", value=status_badge)
-            with meta_col3:
-                chain_info = " -> ".join(response.skill_chain) if len(response.skill_chain) > 1 else "Single Step"
-                st.metric(label="Execution Mode", value=chain_info)
+    status_icon = "✓" if res.is_valid else "⚠️"
+    st.markdown(f"**Execution:** {status_icon}")
 
-            st.divider()
+    st.markdown("### Result")
+    st.markdown("---")
+    st.markdown(res.response)
 
-            if len(response.step_results) > 1:
-                st.markdown("#### 🔗 Multi-Step Orchestration Pipeline")
-                step_cols = st.columns(len(response.step_results))
-                for idx, (col, step) in enumerate(zip(step_cols, response.step_results)):
-                    with col:
-                        st.success(f"**Step {step['step']}:** `{step['skill']}`\n\n{step['skill_name']}")
-
-            st.markdown(response.response)
-
-            if response.validation_notes:
-                st.info(f"**Validation Feedback:** {response.validation_notes}")
-
-    # Prior turns accordion
-    if st.session_state.history:
-        with st.expander(f"📜 View Conversation Memory ({len(st.session_state.history)} prior turns)"):
-            for item in st.session_state.history:
-                st.markdown(f"**Turn {item['turn']} Prompt:** `{item['user_request']}`")
-                st.caption(f"Skill Executed: `{item['selected_skill']}`")
-                st.divider()
+    if res.validation_notes:
+        st.info(f"**Validation Feedback:** {res.validation_notes}")

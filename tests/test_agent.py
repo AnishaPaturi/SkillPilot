@@ -80,15 +80,36 @@ def test_agent_conversational_memory(agent):
     session_id = "test_memory_thread_1"
     code = "def calc(items=[]):\n    return sum(items)"
 
-    # Turn 1
+    # Turn 1: Analyze code
     t1 = agent.run("Analyze this code for bugs", code=code, session_id=session_id)
     assert t1.selected_skill == "code_analysis"
     assert len(t1.execution_history) == 1
+    assert "MutableDefaultArgument" in t1.response
 
-    # Turn 2: Follow-up without passing code explicitly
+    # Turn 2: Follow-up without passing code explicitly (uses first result from memory)
     t2 = agent.run("Now document those issues", code=None, session_id=session_id)
     assert t2.selected_skill == "documentation"
     assert len(t2.execution_history) == 2
     assert "requires source code" not in t2.response
+    assert "calc" in t2.response
+    assert "MutableDefaultArgument" in t2.response
+
+
+def test_agent_memory_security_to_documentation(agent):
+    session_id = "test_memory_security_1"
+    code = "import os\nAPI_KEY = 'secret_token_12345'\ndef exec_cmd(cmd):\n    os.system(cmd)"
+
+    # Turn 1
+    t1 = agent.run("Analyze this code for security vulnerabilities", code=code, session_id=session_id)
+    assert t1.selected_skill == "security_analysis"
+    assert len(t1.execution_history) == 1
+
+    # Turn 2
+    t2 = agent.run("Now document those issues.", code=None, session_id=session_id)
+    assert t2.selected_skill == "documentation"
+    assert len(t2.execution_history) == 2
+    assert "exec_cmd" in t2.response
+    assert "Vulnerabilit" in t2.response
+    assert t2.is_valid is True
 
 

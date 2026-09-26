@@ -47,6 +47,31 @@ class DocumentationTool:
                     "mitigation": mitig.strip(),
                 })
 
+        # Check for prior code analysis issues in the context (Phase 7 Conversational Memory)
+        code_issues: List[Dict[str, str]] = []
+        if "Code Analysis Report" in project_or_code or "Detected Issues" in project_or_code or "[Bug /" in project_or_code:
+            issue_matches = re.findall(
+                r"-\s*\*\*\[(?:Bug|Inefficiency)\s*/\s*([^\]]+)\](?:\s*Line\s*([^:]+))?:\*\*\s*([^\n\r]+)",
+                project_or_code,
+            )
+            for issue_type, line_num, desc in issue_matches:
+                code_issues.append({
+                    "type": issue_type.strip(),
+                    "line": line_num.strip() if line_num else "",
+                    "description": desc.strip(),
+                })
+
+        # Pattern for suggested improvements
+        improvements: List[str] = []
+        if "### 3. Suggested Improvements" in project_or_code:
+            imp_block = project_or_code.split("### 3. Suggested Improvements")[1]
+            if "### 4." in imp_block:
+                imp_block = imp_block.split("### 4.")[0]
+            for line in imp_block.strip().split("\n"):
+                line_clean = line.strip().lstrip("-").strip()
+                if line_clean and not line_clean.startswith("#"):
+                    improvements.append(line_clean)
+
         # 1. Overview
         overview = (
             f"Technical documentation generated for `{title}`. "
@@ -58,6 +83,12 @@ class DocumentationTool:
                 f"\n\n**Security Notice:** Static security analysis identified "
                 f"{len(security_findings)} potential vulnerability/ies in this API. "
                 f"Detailed explanations and recommended mitigations are documented below."
+            )
+        elif code_issues:
+            overview += (
+                f"\n\n**Code Analysis Notice:** Static code analysis identified "
+                f"{len(code_issues)} code quality issue(s) / bug(s) in this codebase. "
+                f"Detailed explanations and remediation steps are documented below."
             )
 
         # 2. Features
@@ -71,6 +102,8 @@ class DocumentationTool:
 
         if security_findings:
             features.append("Security Vulnerability Assessment & Defensive Mitigation Guidelines")
+        if code_issues:
+            features.append("Code Quality & Defect Remediation: Detailed documentation of detected issues and fixes")
 
         if not features:
             features = [
@@ -129,6 +162,17 @@ pip install -r requirements.txt
                 config_lines.append(f"  - **Explanation:** {sf['explanation']}")
                 config_lines.append(f"  - **Potential Impact:** {sf['potential_impact']}")
                 config_lines.append(f"  - **Recommended Mitigation:** {sf['mitigation']}")
+        elif code_issues:
+            config_lines.append("\n### Documented Issues & Remediation from Prior Analysis:")
+            for issue in code_issues:
+                line_info = f" (Line {issue['line']})" if issue['line'] else ""
+                config_lines.append(f"- **Issue: {issue['type']}**{line_info}")
+                config_lines.append(f"  - **Description:** {issue['description']}")
+            if improvements:
+                config_lines.append("\n#### Suggested Improvements & Fixes:")
+                for imp in improvements:
+                    config_lines.append(f"  - {imp}")
+
         configuration = "\n".join(config_lines)
 
         # 7. Examples
@@ -180,8 +224,15 @@ print("Success:", result if 'result' in locals() else "Executed successfully")
         """Extracts functions, classes, and HTTP route endpoints from code."""
         api_surface: Dict[str, Any] = {"classes": [], "functions": [], "endpoints": []}
         source_code = code
-        if "# ========================================================" in code:
-            source_code = code.split("# ========================================================")[0].strip()
+        for marker in [
+            "# ========================================================",
+            "# Prior Analysis Results from Memory",
+            "# Code Analysis Report",
+            "# Security Vulnerability Report",
+            "### 1. Detected Issues",
+        ]:
+            if marker in source_code:
+                source_code = source_code.split(marker)[0].strip()
 
         try:
             tree = ast.parse(source_code)

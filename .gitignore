@@ -1,26 +1,59 @@
-# Python
+# ==============================================================================
+# SkillPilot .gitignore
+# ==============================================================================
+
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
-.Python
 
-# Virtual Environment
+# Virtual Environments
 .venv/
 env/
 venv/
 ENV/
+env.bak/
+venv.bak/
 
-# Testing & Coverage
-.pytest_cache/
-.coverage
-htmlcov/
-
-# Environment Variables & Secrets
+# Environment Variables & Secrets (Prevent leaking API keys)
 .env
+.env.local
+.env.*.local
 !.env.example
 
-# IDEs
+# Testing, Cache & Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+.cache
+htmlcov/
+.hypothesis/
+
+# Build & Distribution
+build/
+dist/
+*.egg-info/
+*.egg
+wheels/
+
+# Streamlit
+.streamlit/
+
+# IDEs & Editors
 .vscode/
 .idea/
 *.swp
+*.swo
+*~
+.project
+.settings/
+
+# OS Specific
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Antigravity / Scratch / Local Agent Workspace Cache
+.kilo/
+scratch/
