@@ -55,6 +55,24 @@ with st.sidebar:
         st.success("Reloaded skills.md successfully!")
         st.rerun()
 
+    with st.expander("📊 Phase 10 Evaluation Benchmark"):
+        st.caption("Measure accuracy, latency, and rejection rate on 20 benchmark queries.")
+        if st.button("🚀 Run Evaluation Suite", use_container_width=True, key="run_benchmark_btn"):
+            from app.evaluation.benchmark import EvaluationBenchmark
+            bench = EvaluationBenchmark(agent=st.session_state.agent)
+            with st.spinner("Evaluating benchmark dataset..."):
+                summary = bench.evaluate_router_only()
+                st.session_state["benchmark_summary"] = summary
+            st.success("Benchmark Completed!")
+
+        if "benchmark_summary" in st.session_state:
+            sm = st.session_state["benchmark_summary"]
+            st.metric("Skill Selection Accuracy", f"{sm.skill_selection_accuracy:.1f}%")
+            st.metric("Invalid Request Handling", f"{sm.invalid_request_handling:.1f}%")
+            st.metric("Multi-Skill Accuracy", f"{sm.multi_skill_accuracy:.1f}%")
+            st.metric("Avg Latency", f"{sm.avg_latency_ms:.1f} ms")
+
+
     if st.session_state.history:
         st.divider()
         st.markdown("### 📜 Prior Turns")

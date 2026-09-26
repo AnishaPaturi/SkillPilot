@@ -41,3 +41,58 @@ class ValidationResult(BaseModel):
     is_valid: bool
     missing_elements: List[str] = Field(default_factory=list)
     feedback: Optional[str] = None
+
+
+class EvaluationItem(BaseModel):
+    """Represents a benchmark test case for agent evaluation."""
+    id: int
+    category: str
+    query: str
+    code: Optional[str] = None
+    expected_skill: Optional[str] = None
+    expected_chain: Optional[List[str]] = None
+    is_negative: bool = False
+    description: str = ""
+
+
+class EvaluationResultItem(BaseModel):
+    """Result of evaluating a single benchmark query."""
+    item_id: int
+    category: str
+    query: str
+    expected_skill: Optional[str]
+    actual_skill: Optional[str]
+    expected_chain: Optional[List[str]]
+    actual_chain: List[str] = Field(default_factory=list)
+    skill_selection_correct: bool
+    chain_correct: bool
+    execution_valid: bool
+    response_useful: bool
+    latency_ms: float
+    output_length: int
+    error: Optional[str] = None
+
+
+class EvaluationSummary(BaseModel):
+    """Aggregated evaluation metrics across the benchmark suite."""
+    total_queries: int
+    matched_queries: int
+    negative_queries: int
+    multi_skill_queries: int
+
+    # Core Academic Metrics
+    skill_selection_accuracy: float = Field(..., description="Percentage of queries routed to the correct skill")
+    execution_accuracy: float = Field(..., description="Percentage of executed skills passing validation")
+    invalid_request_handling: float = Field(..., description="Percentage of off-domain queries properly rejected")
+    multi_skill_accuracy: float = Field(..., description="Percentage of chained workflows correctly sequenced")
+    response_quality_score: float = Field(..., description="Percentage of responses satisfying completeness rules")
+
+    # Latency Metrics (ms)
+    avg_latency_ms: float
+    min_latency_ms: float
+    max_latency_ms: float
+    p95_latency_ms: float
+    total_time_seconds: float
+
+    results: List[EvaluationResultItem] = Field(default_factory=list)
+

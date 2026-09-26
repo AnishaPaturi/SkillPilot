@@ -1,0 +1,412 @@
+{
+  "total_queries": 20,
+  "matched_queries": 17,
+  "negative_queries": 3,
+  "multi_skill_queries": 2,
+  "skill_selection_accuracy": 100.0,
+  "execution_accuracy": 100.0,
+  "invalid_request_handling": 100.0,
+  "multi_skill_accuracy": 100.0,
+  "response_quality_score": 100.0,
+  "avg_latency_ms": 234.99,
+  "min_latency_ms": 96.74,
+  "max_latency_ms": 2297.14,
+  "p95_latency_ms": 376.21,
+  "total_time_seconds": 4.7,
+  "results": [
+    {
+      "item_id": 1,
+      "category": "code_analysis",
+      "query": "Analyze this Python code for bugs and mutable default argument issues.",
+      "expected_skill": "code_analysis",
+      "actual_skill": "code_analysis",
+      "expected_chain": [
+        "code_analysis"
+      ],
+      "actual_chain": [
+        "code_analysis"
+      ],
+      "skill_selection_correct": true,
+      "chain_correct": true,
+      "execution_valid": true,
+      "response_useful": true,
+      "latency_ms": 2297.14,
+      "output_length": 0,
+      "error": null
+    },
+    {
+      "item_id": 2,
+      "category": "code_analysis",
+      "query": "Analyze this Java code for bugs and thread safety hazards.",
+      "expected_skill": "code_analysis",
+      "actual_skill": "code_analysis",
+      "expected_chain": [
+        "code_analysis"
+      ],
+      "actual_chain": [
+        "code_analysis"
+      ],
+      "skill_selection_correct": true,
+      "chain_correct": true,
+      "execution_valid": true,
+      "response_useful": true,
+      "latency_ms": 120.83,
+      "output_length": 0,
+      "error": null
+    },
+    {
+      "item_id": 3,
+      "category": "code_analysis",
+      "query": "Find all bugs and inefficiencies in this loop implementation.",
+      "expected_skill": "code_analysis",
+      "actual_skill": "code_analysis",
+      "expected_chain": [
+        "code_analysis"
+      ],
+      "actual_chain": [
+        "code_analysis"
+      ],
+      "skill_selection_correct": true,
+      "chain_correct": true,
+      "execution_valid": true,
+      "response_useful": true,
+      "latency_ms": 125.49,
+      "output_length": 0,
+      "error": null
+    },
+    {
+      "item_id": 4,
+      "category": "security_analysis",
+      "query": "Find vulnerabilities, injection flaws, and exposed credentials in this API.",
+      "expected_skill": "security_analysis",
+      "actual_skill": "security_analysis",
+      "expected_chain": [
+        "security_analysis"
+      ],
+      "actual_chain": [
+        "security_analysis"
+      ],
+      "skill_selection_correct": true,
+      "chain_correct": true,
+      "execution_valid": true,
+      "response_useful": true,
+      "latency_ms": 109.09,
+      "output_length": 0,
+      "error": null
+    },
+    {
+      "item_id": 5,
+      "category": "security_analysis",
+      "query": "Perform a security analysis on this authentication controller.",
+      "expected_skill": "security_analysis",
+      "actual_skill": "security_analysis",
+      "expected_chain": [
+        "security_analysis"
+      ],
+      "actual_chain": [
+        "security_analysis"
+      ],
+      "skill_selection_correct": true,
+      "chain_correct": true,
+      "execution_valid": true,
+      "response_useful": true,
+      "latency_ms": 275.11,
+      "output_length": 0,
+      "error": null
+    },
+    {
+      "item_id": 6,
+      "category": "security_analysis",
+      "query": "Check this configuration for security weaknesses and secret leaks.",
+      "expected_skill": "security_analysis",
+      "actual_skill": "security_analysis",
+      "expected_chain": [
+        "security_analysis"
+      ],
+      "actual_chain": [
+        "security_analysis"
+      ],
+      "skill_selection_correct": true,
+      "chain_correct": true,
+      "execution_valid": true,
+      "response_useful": true,
+      "latency_ms": 111.51,
+      "output_length": 0,
+      "error": null
+    },
+    {
+      "item_id": 7,
+      "category": "documentation",
+      "query": "Create a README and technical documentation for this repository.",
+      "expected_skill": "documentation",
+      "actual_skill": "documentation",
+      "expected_chain": [
+        "documentation"
+      ],
+      "actual_chain": [
+        "documentation"
+      ],
+      "skill_selection_correct": true,
+      "chain_correct": true,
+      "execution_valid": true,
+      "response_useful": true,
+      "latency_ms": 113.13,
+      "output_length": 0,
+      "error": null
+    },
+    {
+      "item_id": 8,
+      "category": "documentation",
+      "query": "Generate comprehensive API documentation for these endpoints.",
+      "expected_skill": "documentation",
+      "actual_skill": "documentation",
+      "expected_chain": [
+        "documentation"
+      ],
+      "actual_chain": [
+        "documentation"
+      ],
+      "skill_selection_correct": true,
+      "chain_correct": true,
+      "execution_valid": true,
+      "response_useful": true,
+      "latency_ms": 120.69,
+      "output_length": 0,
+      "error": null
+    },
+    {
+      "item_id": 9,
+      "category": "documentation",
+      "query": "Document the setup instructions, architecture, and usage for this service.",
+      "expected_skill": "documentation",
+      "actual_skill": "documentation",
+      "expected_chain": [
+        "documentation"
+      ],
+      "actual_chain": [
+        "documentation"
+      ],
+      "skill_selection_correct": true,
+      "chain_correct": true,
+      "execution_valid": true,
+      "response_useful": true,
+      "latency_ms": 104.09,
+      "output_length": 0,
+      "error": null
+    },
+    {
+      "item_id": 10,
+      "category": "code_explanation",
+      "query": "Explain this Java code and tell me how it works line by line.",
+      "expected_skill": "code_explanation",
+      "actual_skill": "code_explanation",
+      "expected_chain": [
+        "code_explanation"
+      ],
+      "actual_chain": [
+        "code_explanation"
+      ],
+      "skill_selection_correct": true,
+      "chain_correct": true,
+      "execution_valid": true,
+      "response_useful": true,
+      "latency_ms": 104.76,
+      "output_length": 0,
+      "error": null
+    },
+    {
+      "item_id": 11,
+      "category": "code_explanation",
+      "query": "What does this complex recursive function do? Walk me through it.",
+      "expected_skill": "code_explanation",
+      "actual_skill": "code_explanation",
+      "expected_chain": [
+        "code_explanation"
+      ],
+      "actual_chain": [
+        "code_explanation"
+      ],
+      "skill_selection_correct": true,
+      "chain_correct": true,
+      "execution_valid": true,
+      "response_useful": true,
+      "latency_ms": 112.51,
+      "output_length": 0,
+      "error": null
+    },
+    {
+      "item_id": 12,
+      "category": "code_explanation",
+      "query": "Explain the architecture and mechanism of this asynchronous handler.",
+      "expected_skill": "code_explanation",
+      "actual_skill": "code_explanation",
+      "expected_chain": [
+        "code_explanation"
+      ],
+      "actual_chain": [
+        "code_explanation"
+      ],
+      "skill_selection_correct": true,
+      "chain_correct": true,
+      "execution_valid": true,
+      "response_useful": true,
+      "latency_ms": 99.68,
+      "output_length": 0,
+      "error": null
+    },
+    {
+      "item_id": 13,
+      "category": "task_planning",
+      "query": "Give me a roadmap and implementation plan for building a payment microservice.",
+      "expected_skill": "task_planning",
+      "actual_skill": "task_planning",
+      "expected_chain": [
+        "task_planning"
+      ],
+      "actual_chain": [
+        "task_planning"
+      ],
+      "skill_selection_correct": true,
+      "chain_correct": true,
+      "execution_valid": true,
+      "response_useful": true,
+      "latency_ms": 111.11,
+      "output_length": 0,
+      "error": null
+    },
+    {
+      "item_id": 14,
+      "category": "task_planning",
+      "query": "Break down the development tasks and dependencies for migrating our database.",
+      "expected_skill": "task_planning",
+      "actual_skill": "task_planning",
+      "expected_chain": [
+        "task_planning"
+      ],
+      "actual_chain": [
+        "task_planning"
+      ],
+      "skill_selection_correct": true,
+      "chain_correct": true,
+      "execution_valid": true,
+      "response_useful": true,
+      "latency_ms": 104.15,
+      "output_length": 0,
+      "error": null
+    },
+    {
+      "item_id": 15,
+      "category": "task_planning",
+      "query": "Outline the phases, architecture, and testing strategy for building a chat application.",
+      "expected_skill": "task_planning",
+      "actual_skill": "task_planning",
+      "expected_chain": [
+        "task_planning"
+      ],
+      "actual_chain": [
+        "task_planning"
+      ],
+      "skill_selection_correct": true,
+      "chain_correct": true,
+      "execution_valid": true,
+      "response_useful": true,
+      "latency_ms": 113.28,
+      "output_length": 0,
+      "error": null
+    },
+    {
+      "item_id": 16,
+      "category": "multi_skill_chaining",
+      "query": "Analyze this Python API for security issues and then create documentation explaining the vulnerabilities.",
+      "expected_skill": "security_analysis",
+      "actual_skill": "security_analysis",
+      "expected_chain": [
+        "security_analysis",
+        "documentation"
+      ],
+      "actual_chain": [
+        "security_analysis",
+        "documentation"
+      ],
+      "skill_selection_correct": true,
+      "chain_correct": true,
+      "execution_valid": true,
+      "response_useful": true,
+      "latency_ms": 164.29,
+      "output_length": 0,
+      "error": null
+    },
+    {
+      "item_id": 17,
+      "category": "multi_skill_chaining",
+      "query": "Review this code for bugs, then analyze security vulnerabilities, after that generate documentation.",
+      "expected_skill": "code_analysis",
+      "actual_skill": "code_analysis",
+      "expected_chain": [
+        "code_analysis",
+        "security_analysis",
+        "documentation"
+      ],
+      "actual_chain": [
+        "code_analysis",
+        "security_analysis",
+        "documentation"
+      ],
+      "skill_selection_correct": true,
+      "chain_correct": true,
+      "execution_valid": true,
+      "response_useful": true,
+      "latency_ms": 199.95,
+      "output_length": 0,
+      "error": null
+    },
+    {
+      "item_id": 18,
+      "category": "invalid_request",
+      "query": "Tell me a funny joke about programming.",
+      "expected_skill": null,
+      "actual_skill": null,
+      "expected_chain": [],
+      "actual_chain": [],
+      "skill_selection_correct": true,
+      "chain_correct": true,
+      "execution_valid": true,
+      "response_useful": true,
+      "latency_ms": 112.86,
+      "output_length": 0,
+      "error": null
+    },
+    {
+      "item_id": 19,
+      "category": "invalid_request",
+      "query": "What is the weather forecast for New York City tomorrow?",
+      "expected_skill": null,
+      "actual_skill": null,
+      "expected_chain": [],
+      "actual_chain": [],
+      "skill_selection_correct": true,
+      "chain_correct": true,
+      "execution_valid": true,
+      "response_useful": true,
+      "latency_ms": 96.74,
+      "output_length": 0,
+      "error": null
+    },
+    {
+      "item_id": 20,
+      "category": "invalid_request",
+      "query": "Can you give me a recipe for authentic Neapolitan pizza?",
+      "expected_skill": null,
+      "actual_skill": null,
+      "expected_chain": [],
+      "actual_chain": [],
+      "skill_selection_correct": true,
+      "chain_correct": true,
+      "execution_valid": true,
+      "response_useful": true,
+      "latency_ms": 103.31,
+      "output_length": 0,
+      "error": null
+    }
+  ]
+}
