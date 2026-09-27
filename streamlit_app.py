@@ -12,6 +12,15 @@ from app.agent.graph import SkillPilotAgent
 
 load_dotenv()
 
+# Bridge Streamlit Cloud secrets to os.environ for cloud deployment
+try:
+    if hasattr(st, "secrets"):
+        for k, v in st.secrets.items():
+            if isinstance(v, str) and k not in os.environ:
+                os.environ[k] = v
+except Exception:
+    pass
+
 # Page configuration
 st.set_page_config(
     page_title="SkillPilot | Skill-Driven AI Development Agent",
