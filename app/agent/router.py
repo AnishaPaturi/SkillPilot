@@ -79,30 +79,39 @@ class SkillRouter:
         for skill in skills:
             # Check exact skill ID match
             if skill.id in q_lower:
-                scores[skill.id] = scores.get(skill.id, 0) + 12
+                scores[skill.id] = scores.get(skill.id, 0) + 15
+
+            # Check full skill name match
+            if skill.name and skill.name.lower() in q_lower:
+                scores[skill.id] = scores.get(skill.id, 0) + 15
 
             # Boost on distinctive ID parts (e.g., 'security', 'documentation', 'planning')
             for part in skill.id.split("_"):
-                if part in q_tokens and part not in STOP_WORDS and part not in {"code", "analysis"}:
+                if part in q_tokens and part not in STOP_WORDS and part not in {"code", "analysis", "skill"}:
                     scores[skill.id] = scores.get(skill.id, 0) + 8
+
+            # Boost on distinctive name parts
+            for word in re.findall(r"\b[a-z]{3,}\b", skill.name.lower()):
+                if word in q_tokens and word not in STOP_WORDS and word not in {"code", "analysis", "skill"}:
+                    scores[skill.id] = scores.get(skill.id, 0) + 6
 
             # Check triggers
             for trigger in skill.when_to_use:
                 t_lower = trigger.lower()
-                if t_lower in q_lower:
-                    scores[skill.id] = scores.get(skill.id, 0) + 8
+                if t_lower and (t_lower in q_lower or q_lower in t_lower):
+                    scores[skill.id] = scores.get(skill.id, 0) + 14
                 else:
                     # Meaningful word tokens overlap
                     t_tokens = [w for w in re.findall(r"\b[a-z]{3,}\b", t_lower) if w not in STOP_WORDS]
                     for w in t_tokens:
                         if w in q_tokens:
-                            scores[skill.id] = scores.get(skill.id, 0) + 3
+                            scores[skill.id] = scores.get(skill.id, 0) + 4
 
             # Check description keywords
             desc_words = [w for w in re.findall(r"\b[a-z]{4,}\b", skill.description.lower()) if w not in STOP_WORDS]
             for w in desc_words:
                 if w in q_tokens:
-                    scores[skill.id] = scores.get(skill.id, 0) + 1
+                    scores[skill.id] = scores.get(skill.id, 0) + 2
 
         # Sort skills by match score
         sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)

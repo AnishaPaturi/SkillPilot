@@ -5,8 +5,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict, Any
 
-from app.models.schemas import ChatRequest, ChatResponse, SkillDefinition
+from app.models.schemas import ChatRequest, ChatResponse, SkillDefinition, SkillUploadRequest
 from app.skills.registry import SkillRegistry
+from app.skills.parser import SkillsMarkdownParser
 from app.agent.graph import SkillPilotAgent
 
 # Load environment variables
@@ -34,6 +35,7 @@ agent = SkillPilotAgent(registry=registry)
 
 
 @app.get("/")
+@app.get("/health")
 def health_check():
     """Health check endpoint."""
     return {
@@ -41,20 +43,24 @@ def health_check():
         "service": "SkillPilot Agent Runtime",
         "version": "1.0.0",
         "registered_skills": len(registry.list_skills()),
+        "is_custom_skills": registry.is_custom,
+        "active_source": registry.active_source,
     }
 
 
 @app.get("/api/skills", response_model=List[SkillDefinition])
 def get_skills():
-    """Returns all currently registered skills parsed from skills.md."""
+    """Returns all currently registered skills parsed from skills.md or custom upload."""
     return registry.list_skills()
 
 
 @app.post("/api/skills/reload")
 def reload_skills():
-    """Dynamically reloads skills.md without restarting the server."""
+    """Dynamically reloads default skills.md without restarting the server."""
+    global agent
     try:
         registry.reload()
+        agent = SkillPilotAgent(registry=registry)
         return {
             "status": "success",
             "message": "skills.md reloaded successfully",
@@ -63,6 +69,57 @@ def reload_skills():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to reload skills: {str(e)}")
+
+
+@app.post("/api/skills/upload")
+def upload_skills(request: SkillUploadRequest):
+    """Uploads, parses, and activates a custom skills markdown definition."""
+    global agent
+    validation = SkillsMarkdownParser.validate_markdown(request.content)
+    if not validation["valid"]:
+        raise HTTPException(status_code=400, detail=validation["error"])
+
+    try:
+        loaded = registry.load_from_content(request.content, source_name=request.filename or "uploaded_skills.md")
+        agent = SkillPilotAgent(registry=registry)
+        return {
+            "status": "success",
+            "message": f"Successfully parsed and activated {len(loaded)} skills from {request.filename or 'uploaded markdown'}",
+            "total_skills": len(loaded),
+            "warnings": validation.get("warnings", []),
+            "skills": [s.id for s in loaded],
+            "skills_catalog": [
+                {
+                    "id": s.id,
+                    "name": s.name,
+                    "description": s.description,
+                    "triggers": s.when_to_use,
+                    "input_spec": s.input_spec,
+                    "output_spec": s.output_spec,
+                    "constraints": s.constraints,
+                }
+                for s in loaded
+            ],
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to activate custom skills: {str(e)}")
+
+
+@app.post("/api/skills/reset")
+def reset_skills():
+    """Restores the default built-in skills.md specification."""
+    global agent
+    try:
+        registry.reset_to_default()
+        agent = SkillPilotAgent(registry=registry)
+        return {
+            "status": "success",
+            "message": "Reset to default built-in skills.md catalog successfully",
+            "total_skills": len(registry.list_skills()),
+            "skills": [s.id for s in registry.list_skills()],
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to reset skills: {str(e)}")
 
 
 @app.post("/api/chat", response_model=ChatResponse)

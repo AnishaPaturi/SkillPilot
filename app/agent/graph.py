@@ -82,12 +82,13 @@ class SkillPilotAgent:
         workflow.add_node("analyze_request", self._node_analyze_request)
         workflow.add_node("select_skill", self._node_select_skill)
 
-        # 2. Dedicated Skill Execution Nodes
+        # 2. Dedicated Skill Execution Nodes & Dynamic Custom Skill Node
         workflow.add_node("exec_code_analysis", self._node_exec_code_analysis)
         workflow.add_node("exec_security_analysis", self._node_exec_security_analysis)
         workflow.add_node("exec_documentation", self._node_exec_documentation)
         workflow.add_node("exec_code_explanation", self._node_exec_code_explanation)
         workflow.add_node("exec_task_planning", self._node_exec_task_planning)
+        workflow.add_node("exec_custom_skill", self._node_exec_custom_skill)
 
         # 3. Validation, Chaining & Memory Persistence Nodes
         workflow.add_node("validate", self._node_validate)
@@ -108,6 +109,7 @@ class SkillPilotAgent:
                 "documentation": "exec_documentation",
                 "code_explanation": "exec_code_explanation",
                 "task_planning": "exec_task_planning",
+                "custom_skill": "exec_custom_skill",
                 "no_match": "format_response",
                 "missing_input": "format_response",
             },
@@ -119,6 +121,7 @@ class SkillPilotAgent:
         workflow.add_edge("exec_documentation", "validate")
         workflow.add_edge("exec_code_explanation", "validate")
         workflow.add_edge("exec_task_planning", "validate")
+        workflow.add_edge("exec_custom_skill", "validate")
 
         # After validate: Check if there are more skills in the chain
         workflow.add_conditional_edges(
@@ -140,6 +143,7 @@ class SkillPilotAgent:
                 "documentation": "exec_documentation",
                 "code_explanation": "exec_code_explanation",
                 "task_planning": "exec_task_planning",
+                "custom_skill": "exec_custom_skill",
                 "no_match": "format_response",
                 "missing_input": "format_response",
             },
@@ -367,7 +371,14 @@ class SkillPilotAgent:
             "code_explanation",
             "task_planning",
         }
-        return skill_id if skill_id in valid_branches else "no_match"
+        if skill_id in valid_branches:
+            return skill_id
+
+        # Dynamically route any custom uploaded skill
+        if self.registry.get_skill(skill_id):
+            return "custom_skill"
+
+        return "no_match"
 
     def _decide_after_validate(self, state: AgentState) -> str:
         """Determines whether to execute the next skill in the chain or finish."""
@@ -599,6 +610,47 @@ class SkillPilotAgent:
             "stage": "TOOL_EXECUTION",
             "title": "Tool executed: TaskPlannerTool",
             "detail": f"Constructed {phases_count}-phase implementation roadmap with risk mitigation",
+            "status": "completed",
+            "timestamp": time.strftime("%H:%M:%S"),
+        })
+
+        return {
+            **state,
+            "tool_findings": tool_findings,
+            "raw_response": output,
+            "skill_result": output,
+            "step_results": updated_steps,
+            "trace": trace,
+            "active_nodes": active_nodes,
+        }
+
+    def _node_exec_custom_skill(self, state: AgentState) -> AgentState:
+        """Executes a custom uploaded skill dynamically from its parsed definition."""
+        skill_dict = state.get("skill_definition")
+        if not skill_dict:
+            skill = self.registry.get_skill(state.get("selected_skill_id"))
+        else:
+            skill = SkillDefinition(**skill_dict)
+
+        query = state.get("query", "")
+        code = state.get("code")
+
+        tool_findings = SkillExecutor.run_tools_for_skill(skill.id, query=query, code=code)
+        output = SkillExecutor.execute(
+            skill=skill,
+            query=query,
+            code=code,
+            tool_findings=tool_findings,
+        )
+        updated_steps = self._record_step(state, output, tool_findings)
+
+        trace = list(state.get("trace", []))
+        active_nodes = list(state.get("active_nodes", []))
+        active_nodes.append("exec_custom_skill")
+        trace.append({
+            "stage": "TOOL_EXECUTION",
+            "title": f"Custom Skill executed: {skill.name}",
+            "detail": f"Executed dynamic skill '{skill.id}' according to uploaded markdown instructions",
             "status": "completed",
             "timestamp": time.strftime("%H:%M:%S"),
         })

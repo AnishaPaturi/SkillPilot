@@ -14,6 +14,12 @@ class SkillDefinition(BaseModel):
     constraints: List[str] = Field(default_factory=list, description="Rules and safety restrictions")
 
 
+class SkillUploadRequest(BaseModel):
+    """Payload for uploading and activating custom skills markdown."""
+    content: str = Field(..., description="Markdown content containing custom skill definitions")
+    filename: Optional[str] = Field(default="custom_skills.md", description="Optional source filename identifier")
+
+
 class ChatRequest(BaseModel):
     """User request payload sent to the agent."""
     query: str = Field(..., description="User instruction or prompt")
