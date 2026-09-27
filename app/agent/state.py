@@ -32,3 +32,9 @@ class AgentState(TypedDict, total=False):
     current_step_index: int
     step_results: List[Dict[str, Any]]
     is_chained: bool
+
+    # Observability: Execution Trace, Active Graph Nodes & Metrics
+    trace: List[Dict[str, Any]]
+    active_nodes: List[str]
+    start_time: float
+    metrics: Dict[str, Any]

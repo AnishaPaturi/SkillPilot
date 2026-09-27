@@ -34,6 +34,9 @@ class ChatResponse(BaseModel):
     is_valid: bool = Field(default=True, description="Whether the output passed validation rules")
     validation_notes: Optional[str] = Field(default=None, description="Validation or guardrail feedback")
     error: Optional[str] = Field(default=None, description="Error message if execution failed")
+    trace: List[Dict[str, Any]] = Field(default_factory=list, description="Step-by-step agent execution trace")
+    metrics: Dict[str, Any] = Field(default_factory=dict, description="Runtime execution metrics and timings")
+    active_nodes: List[str] = Field(default_factory=list, description="List of executed LangGraph nodes")
 
 
 class ValidationResult(BaseModel):
